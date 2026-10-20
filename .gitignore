@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Datasets: never committed (licensing + size). See docs/data.md.
+data/*
+!data/README.md
+
+# Model weights: never committed. Fine-tuned checkpoints go here.
+weights/*
+!weights/README.md
+*.pt
+*.pth
+*.onnx
+
+# Results: commit raw JSON logs and plots, not image dumps.
+results/runs/**/images/
+results/runs/**/saliency/
+results/runs/**/*.npy
+results/runs/**/*.npz
+
+# Ultralytics default output dir
+runs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+.venv/
