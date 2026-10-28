@@ -1,0 +1,39 @@
+[build-system] # How to build/install this package
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project] # What the package is
+name = "plate-cloak"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [ # What it needs to run (tested major.minor as the floor)
+    "torch>=2.11",
+    "torchvision>=0.26",
+    "ultralytics>=8.4",
+    "omegaconf>=2.4",
+    "numpy>=2.2",
+    "pandas>=3.0",
+    "pillow>=12.3",
+    "matplotlib>=3.11",
+    "scikit-image>=0.26",
+]
+
+[project.optional-dependencies]
+# Development only: tests and linting. Install with: pip install -e ".[dev]"
+dev = ["pytest>=9.1", "ruff>=0.17", "torchmetrics>=1.9", "pycocotools>=2.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"] # my code lives in src/ (the src layout)
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# spikes: frozen record of past experiments. docs: code snippets in Markdown are illustrations.
+extend-exclude = ["spikes", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

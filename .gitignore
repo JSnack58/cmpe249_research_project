@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 build/
 dist/
+cache/
 
 # Notebooks
 .ipynb_checkpoints/

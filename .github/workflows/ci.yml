@@ -1,0 +1,33 @@
+# Continuous integration: GitHub runs this on every push to main and on every pull request.
+# It catches lint errors and failing tests on a clean machine, so "works on my laptop" is not enough.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest   # a fresh Linux VM with no GPU and nothing installed
+    steps:
+      - uses: actions/checkout@v4          # get the repository's code
+      - uses: actions/setup-python@v5      # install Python and cache pip downloads between runs
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # CI has no GPU, so install the CPU build of torch (much smaller download).
+      # pyproject.toml supplies the package list; ".[dev]" adds pytest, ruff, torchmetrics, pycocotools.
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Test
+        run: pytest -v

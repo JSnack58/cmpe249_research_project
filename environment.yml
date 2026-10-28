@@ -1,0 +1,24 @@
+name: plate-cloak
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12.7
+  - pip=24.2
+  - pip:
+    - --extra-index-url https://download.pytorch.org/whl/cu128
+    - torch==2.11.0
+    - ultralytics==8.4.178
+    - torchvision==0.26.0
+    - omegaconf==2.4.0
+    - numpy==2.2.6
+    - pandas==3.0.6
+    - pillow==12.3.0
+    - matplotlib==3.11.2
+    - torchmetrics==1.9.0 
+    - pycocotools==2.0.11 
+    - scikit-image==0.26.0 
+    - pytest==9.1.1 
+    - ruff==0.17.1 
+    - -e .
