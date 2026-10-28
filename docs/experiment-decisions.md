@@ -1,6 +1,7 @@
 # Experiment Decisions
 
 Running list of design decisions for the main experiment.
+As of 2026-10-20, most "Open" items below are settled in the [design doc](superpowers/specs/2026-10-20-plate-cloak-experiment-design.md), which takes precedence; its section 7 lists what is still open.
 "Decided" items are settled; "Open" items must be settled before the real runs.
 Each entry notes where it came from.
 
