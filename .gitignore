@@ -34,6 +34,7 @@ runs/
 
 # Editors / OS
 .vscode/
+.lavish/
 .idea/
 .DS_Store
 .venv/
