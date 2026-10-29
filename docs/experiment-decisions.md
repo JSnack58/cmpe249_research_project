@@ -30,6 +30,14 @@ Each entry notes where it came from.
 - **No image rotation handling needed for Open Images.**
   None of the 8,154 downloaded images carries an EXIF orientation tag, and Open Images' rotation metadata is 0 (or empty) for every val/test image we use.
   The loader still applies `exif_transpose`, which is a no-op here but protects other image sources.
+- **Fine-tuning timing (2026-10-28, Task 4, RTX 3090, 2 epochs each, batch 16, 640 px).**
+  YOLOv8s 24 s/epoch (100 epochs about 0.7 h); YOLOv10l 81 s/epoch (about 2.3 h); RT-DETR-L 104 s/epoch (about 2.9 h).
+  One seed of all three: about 5.9 h; three seeds: about 17.7 h; with A3's extra surrogates roughly 20 GPU-hours, inside the planned 20-28.
+  Validation mAP@0.5 after only 2 epochs: YOLOv8s 0.71, YOLOv10l 0.69, RT-DETR-L 0.82, so 100 epochs is ample.
+- **RT-DETR training is not bit-for-bit reproducible.**
+  Its deformable attention uses `grid_sampler_2d_backward`, which PyTorch has no deterministic CUDA kernel for (Ultralytics warns and continues).
+  Same-seed RT-DETR runs can differ slightly; YOLO runs do not have this problem.
+  The 3-seed design reports this variation; mention it as a limitation in the write-up.
 
 ## Open
 
