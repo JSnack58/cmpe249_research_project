@@ -32,6 +32,24 @@ def prepare_data(args: argparse.Namespace) -> int:
     return 0
 
 
+def finetune(args: argparse.Namespace) -> int:
+    """Fine-tune one model with one seed; epochs/batch/workers come from the config."""
+    from plate_cloak.models.finetune import finetune as run_finetune
+
+    cfg = load_config(args.config, args.overrides)
+    run_finetune(
+        name=args.model,
+        seed=args.seed,
+        data_yaml=resolve_path(cfg.data.root) / "data.yaml",
+        epochs=args.epochs if args.epochs is not None else cfg.models.epochs,
+        batch=cfg.models.batch,
+        workers=cfg.models.workers,
+        device=args.device,
+        timing=args.timing,
+    )
+    return 0
+
+
 def not_implemented(args: argparse.Namespace) -> int:
     """Placeholder for stages that are not built yet."""
     # args.command holds the subcommand name because of dest="command" below.
@@ -59,8 +77,18 @@ def main(argv: list[str] | None = None) -> int:
     p_prepare.add_argument("--workers", type=int, default=32, help="parallel downloads")
     p_prepare.set_defaults(func=prepare_data)
 
-    finetune = sub.add_parser("finetune", help="fine-tune one detector on the plate dataset")
-    finetune.set_defaults(func=not_implemented)
+    from plate_cloak.models.zoo import ZOO
+
+    p_finetune = sub.add_parser("finetune", help="fine-tune one detector on the plate dataset")
+    _add_config_args(p_finetune)
+    p_finetune.add_argument("--model", required=True, choices=sorted(ZOO))
+    p_finetune.add_argument("--seed", required=True, type=int)
+    p_finetune.add_argument("--epochs", type=int, help="override models.epochs (e.g. 2 for timing)")
+    p_finetune.add_argument("--device", default="0", help="GPU index for Ultralytics, or 'cpu'")
+    p_finetune.add_argument(
+        "--timing", action="store_true", help="throwaway speed test in runs/timing/, never exported"
+    )
+    p_finetune.set_defaults(func=finetune)
 
     attack = sub.add_parser("attack", help="generate adversarial images on the surrogate (cached)")
     attack.set_defaults(func=not_implemented)
