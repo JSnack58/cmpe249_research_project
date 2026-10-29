@@ -9,6 +9,7 @@ weights/<model>_s<seed>.json), so it works no matter how training was started.
 from __future__ import annotations
 
 import csv
+import math
 import re
 import sys
 import time
@@ -62,7 +63,15 @@ def status_line() -> str:
     filled = round(BAR * epoch / total)
     bar = "█" * filled + "░" * (BAR - filled)
     stale = time.time() - results.stat().st_mtime > max(3 * per_epoch, 600)
-    note = "  (no update lately: stopped?)" if stale else ""
+    losses = [float(v) for k, v in rows[-1].items() if k.startswith("train/")]
+    if any(math.isnan(x) for x in losses):
+        note = "  (NaN loss: diverging!)"
+    elif not map50 >= 0.5 * best:  # same rule as finetune.check_not_collapsed
+        note = "  (val mAP collapsed: diverged!)"
+    elif stale:
+        note = "  (no update lately: stopped?)"
+    else:
+        note = ""
     return (
         f"{head} {bar} {epoch:>3}/{total}  mAP50 {map50:.3f} (best {best:.3f})  "
         f"{per_epoch:.0f}s/ep  ETA {eta_min // 60:.0f}h{eta_min % 60:02.0f}m{note}"

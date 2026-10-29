@@ -133,3 +133,52 @@ def test_already_exported_model_is_skipped(dirs, fake):
     out.with_suffix(".json").write_text("{}")
     assert ft.finetune("yolov8s", 0, dirs / "data.yaml", 1, 2, 0, "cpu") == out
     assert fake.calls == [] and out.read_bytes() == b"old"
+
+
+def test_optimizer_is_pinned_per_family_not_auto(dirs, fake):
+    ft.finetune("yolov8s", 0, dirs / "data.yaml", 3, 2, 0, "cpu")
+    ft.finetune("rtdetr-l", 0, dirs / "data.yaml", 3, 2, 0, "cpu")
+    yolo, rtdetr = fake.calls
+    assert yolo["optimizer"] == rtdetr["optimizer"] == "AdamW"
+    assert yolo["lr0"] == 0.002 and rtdetr["lr0"] == 1e-4
+    assert yolo["momentum"] == rtdetr["momentum"] == 0.9
+
+
+def _collapsed_run(name="rtdetr-l_s0"):
+    run = ft.RUNS_DIR / name
+    (run / "weights").mkdir(parents=True)
+    (run / "weights" / "last.pt").write_bytes(b"diverged")
+    (run / "weights" / "best.pt").write_bytes(b"early best")
+    (run / "results.csv").write_text(
+        "epoch,metrics/mAP50(B),metrics/mAP50-95(B)\n1,0.82,0.5\n2,0.85,0.5\n3,0,0\n"
+    )
+    return run
+
+
+def test_collapsed_run_is_not_resumed(dirs, fake, monkeypatch):
+    _collapsed_run()
+    monkeypatch.setattr(ft, "checkpoint_epoch", lambda path: 3)
+    with pytest.raises(RuntimeError, match="collapsed to 0.000 at epoch 3"):
+        ft.finetune("rtdetr-l", 0, dirs / "data.yaml", 100, 2, 0, "cpu")
+    assert fake.calls == []
+
+
+def test_collapsed_finished_run_is_not_exported(dirs, fake, monkeypatch):
+    _collapsed_run()
+    monkeypatch.setattr(ft, "checkpoint_epoch", lambda path: -1)
+    with pytest.raises(RuntimeError, match="diverged"):
+        ft.finetune("rtdetr-l", 0, dirs / "data.yaml", 3, 2, 0, "cpu")
+    assert not zoo.weights_path("rtdetr-l", 0).exists()
+
+
+def test_nan_map_counts_as_collapsed(tmp_path):
+    csv_path = tmp_path / "results.csv"
+    csv_path.write_text("epoch,metrics/mAP50(B),metrics/mAP50-95(B)\n1,0.8,0.5\n2,nan,nan\n")
+    with pytest.raises(RuntimeError):
+        ft.check_not_collapsed(csv_path)
+
+
+def test_normal_dip_is_not_collapse(tmp_path):
+    csv_path = tmp_path / "results.csv"
+    csv_path.write_text("epoch,metrics/mAP50(B),metrics/mAP50-95(B)\n1,0.85,0.5\n2,0.72,0.4\n")
+    ft.check_not_collapsed(csv_path)  # does not raise

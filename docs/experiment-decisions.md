@@ -12,8 +12,10 @@ Each entry notes where it came from.
   This keeps the comparison across architectures fair.
 - **Noise only inside the plate box (plus a margin).**
   Placement uses the ground-truth boxes, so a detector mistake cannot contaminate the attack.
-- **Same training data, split, and recipe for every detector.**
-  YOLOv8s, YOLOv10n and RT-DETR-L are all fine-tuned by us, so architecture is the only difference.
+- **Same training data, split, and recipe for every detector, except RT-DETR's learning rate.**
+  YOLOv8s, YOLOv10l and RT-DETR-L are all fine-tuned by us with the same data, image size, batch, augmentation and epochs.
+  The optimizer is pinned per family instead of Ultralytics' "auto": AdamW, momentum 0.9, no bias warm-up, lr 0.002 for YOLO and 1e-4 for RT-DETR (the RT-DETR paper's value).
+  The write-up should say each detector is trained with its family's standard learning rate (see the Records entry on the RT-DETR divergence).
   Off-the-shelf plate detectors cannot carry the H1 evidence. (Spike 01 used one, and we cannot rule out test-image leakage.)
 - **Random-noise control at the same budget.**
   Spike 01 showed random +/-8/255 noise leaves recall at 0.99, so evasion comes from the optimization, not the noise size.
@@ -38,6 +40,14 @@ Each entry notes where it came from.
   Its deformable attention uses `grid_sampler_2d_backward`, which PyTorch has no deterministic CUDA kernel for (Ultralytics warns and continues).
   Same-seed RT-DETR runs can differ slightly; YOLO runs do not have this problem.
   The 3-seed design reports this variation; mention it as a limitation in the write-up.
+- **RT-DETR diverged with the shared learning rate (2026-10-28).**
+  The first rtdetr-l seed 0 run used what "auto" picked for every model: AdamW at lr 0.002, 20x the RT-DETR paper's 1e-4.
+  Validation loss was already NaN in epochs 2, 4 and 6; at epoch 10 the training loss went NaN and val mAP@0.5 fell from 0.851 (epoch 8) to 0 for good.
+  The checkpoint stayed finite, but batch-norm statistics grew 10-40x and the model found no boxes; Ultralytics stopped after 3 failed NaN recoveries.
+  "auto" is also fragile: past 10,000 iterations it switches to MuSGD at lr 0.01, so a change in epochs or dataset size would silently change the recipe.
+  Fix: pinned optimizer settings (above); YOLO's are identical to what "auto" chose, so the finished yolov8s seed 0 run stays valid.
+  Fine-tuning now refuses to resume or export a run whose last val mAP is below half its best.
+  The diverged run is kept in `runs/finetune/rtdetr-l_s0_diverged_lr002/`.
 
 ## Open
 

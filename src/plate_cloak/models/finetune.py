@@ -1,11 +1,13 @@
 """Fine-tune one detector on the plate dataset with Ultralytics.
 
-Every model gets the same data, image size and epoch count, early stopping off, and each
-family's default Ultralytics optimizer settings (RT-DETR does not train well with YOLO's).
+Every model gets the same data, image size, batch, augmentation and epoch count, with early
+stopping off. The optimizer is pinned per family (OPTIMIZER below) rather than left to
+Ultralytics' "auto", which silently switches optimizer with run length.
 Training output goes to runs/finetune/<name>_s<seed>/ (git-ignored); the best-validation
 checkpoint is copied to weights/<name>_s<seed>.pt with a JSON summary next to it.
 
 Crash-safe: an interrupted run resumes from its last checkpoint; a finished run is only exported.
+A run whose validation mAP collapsed is never resumed or exported (see check_not_collapsed).
 """
 
 from __future__ import annotations
@@ -23,6 +25,16 @@ from plate_cloak.models.zoo import model_class
 RUNS_DIR = resolve_path("runs/finetune")
 IMGSZ = 640
 FINISHED = -1  # Ultralytics sets a checkpoint's epoch to -1 once training completes
+COLLAPSE_RATIO = 0.5  # last-epoch val mAP below this fraction of the best counts as collapsed
+
+# What optimizer="auto" picked for our first runs: AdamW, lr 0.002, momentum (beta1) 0.9, no bias
+# warm-up. RT-DETR diverged with it (NaN at epoch 10, val mAP 0 after), so it gets the RT-DETR
+# paper's lr of 1e-4 (Zhao et al., 2024); everything else matches. See docs/experiment-decisions.md.
+_ADAMW = {"optimizer": "AdamW", "momentum": 0.9, "warmup_bias_lr": 0.0}
+OPTIMIZER = {
+    "yolo": {**_ADAMW, "lr0": 0.002},
+    "rtdetr": {**_ADAMW, "lr0": 1e-4},
+}
 
 
 def finetune(
@@ -49,29 +61,30 @@ def finetune(
     runs_dir = RUNS_DIR.parent / "timing" if timing else RUNS_DIR
     run_dir = runs_dir / run_name
     last = run_dir / "weights" / "last.pt"
-    cls = model_class(zoo.spec(name).family)
+    family = zoo.spec(name).family
+    cls = model_class(family)
+    fresh_args = _train_args(data_yaml, epochs, batch, workers, device, seed, runs_dir, run_name)
+    fresh_args |= OPTIMIZER[family]
 
     if timing:
         shutil.rmtree(run_dir, ignore_errors=True)  # always a fresh measurement
         model = cls(str(_init(name)))
-        model.train(
-            **_train_args(data_yaml, epochs, batch, workers, device, seed, runs_dir, run_name)
-        )
+        model.train(**fresh_args)
         return _report_timing(run_dir / "results.csv", run_name, epochs)
 
     if last.exists() and checkpoint_epoch(last) == FINISHED:
         print(f"{run_name}: training already finished; exporting")
         model = cls(str(run_dir / "weights" / "best.pt"))
     elif last.exists():
+        check_not_collapsed(run_dir / "results.csv")
         print(f"{run_name}: resuming from {last}")
         model = cls(str(last))
         model.train(resume=True)
     else:
         model = cls(str(_init(name)))
-        model.train(
-            **_train_args(data_yaml, epochs, batch, workers, device, seed, runs_dir, run_name)
-        )
+        model.train(**fresh_args)
 
+    check_not_collapsed(run_dir / "results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(run_dir / "weights" / "best.pt", out)
     summary = {
@@ -127,6 +140,27 @@ def checkpoint_epoch(path: Path) -> int:
     import torch
 
     return torch.load(path, map_location="cpu", weights_only=False).get("epoch", 0)
+
+
+def check_not_collapsed(results_csv: Path) -> None:
+    """Raise if the latest epoch's val mAP@0.5 fell far below the run's best (or is NaN).
+
+    A diverged model can keep a finite training loss while detecting nothing, and Ultralytics
+    would still finish and keep an early best.pt; exporting that would hide the failure.
+    """
+    if not results_csv.exists():
+        return
+    with results_csv.open() as f:
+        maps = [float(r["metrics/mAP50(B)"]) for r in csv.DictReader(f, skipinitialspace=True)]
+    if not maps:
+        return
+    best, latest = max(maps), maps[-1]
+    if not latest >= COLLAPSE_RATIO * best:  # written this way so NaN also fails
+        raise RuntimeError(
+            f"{results_csv.parent.name}: val mAP@0.5 collapsed to {latest:.3f} at epoch "
+            f"{len(maps)} (best {best:.3f}); training diverged. Move {results_csv.parent} "
+            "aside and retrain from scratch."
+        )
 
 
 def _best_epoch(results_csv: Path) -> dict[str, Any]:
