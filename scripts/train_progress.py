@@ -13,6 +13,7 @@ import math
 import re
 import sys
 import time
+from itertools import pairwise
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -55,8 +56,11 @@ def status_line() -> str:
         return f"{head} epoch 1 running..."
     total = epochs_planned(RUNS / current)
     epoch = int(float(rows[-1]["epoch"]))
-    elapsed = float(rows[-1]["time"])
-    per_epoch = elapsed / epoch
+    # Ultralytics' "time" is cumulative but restarts on resume, so time each epoch from the
+    # difference to the one before it and skip the jump back at a resume.
+    times = [float(r["time"]) for r in rows]
+    steps = [b - a for a, b in pairwise(times) if b > a][-5:] or times[-1:]
+    per_epoch = sorted(steps)[len(steps) // 2]
     eta_min = per_epoch * (total - epoch) / 60
     map50 = float(rows[-1]["metrics/mAP50(B)"])
     best = max(float(r["metrics/mAP50(B)"]) for r in rows)
