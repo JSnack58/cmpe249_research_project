@@ -8,6 +8,28 @@ Stage-specific arguments are added in the task that implements each stage.
 """
 
 import argparse
+from pathlib import Path
+
+from plate_cloak.config import BASE_CONFIG, load_config, resolve_path
+
+
+def prepare_data(args: argparse.Namespace) -> int:
+    """Download the dataset (skipping files already present) and freeze the eligible test list."""
+    from plate_cloak.data.eval_images import write_eligible_list
+    from plate_cloak.data.openimages import prepare_openimages
+
+    cfg = load_config(args.config, args.overrides)
+    root = resolve_path(cfg.data.root)
+    prepare_openimages(root, workers=args.workers)
+    n = write_eligible_list(
+        root,
+        resolve_path(cfg.data.eligible_list),
+        cfg.data.imgsz,
+        cfg.data.min_plate_w,
+        cfg.data.min_plate_h,
+    )
+    print(f"eligible test images: {n} -> {cfg.data.eligible_list}")
+    return 0
 
 
 def not_implemented(args: argparse.Namespace) -> int:
@@ -30,10 +52,12 @@ def main(argv: list[str] | None = None) -> int:
     # One parser per stage. help= is the text shown by --help.
     # set_defaults(func=...) attaches the function that runs the stage, so main() can dispatch
     # with args.func(args) instead of an if/elif chain on the stage name.
-    prepare_data = sub.add_parser(
+    p_prepare = sub.add_parser(
         "prepare-data", help="download Open Images plates and freeze the eligible test list"
     )
-    prepare_data.set_defaults(func=not_implemented)
+    _add_config_args(p_prepare)
+    p_prepare.add_argument("--workers", type=int, default=32, help="parallel downloads")
+    p_prepare.set_defaults(func=prepare_data)
 
     finetune = sub.add_parser("finetune", help="fine-tune one detector on the plate dataset")
     finetune.set_defaults(func=not_implemented)
@@ -54,3 +78,9 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return args.func(args)  # run the chosen stage; its return value becomes the exit code
+
+
+def _add_config_args(parser: argparse.ArgumentParser) -> None:
+    """--config plus trailing key=value overrides, shared by every config-driven stage."""
+    parser.add_argument("--config", type=Path, default=BASE_CONFIG, help="config or sweep file")
+    parser.add_argument("overrides", nargs="*", help="config overrides such as attack.eps.cb=6")

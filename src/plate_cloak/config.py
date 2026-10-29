@@ -19,7 +19,8 @@ from typing import Any
 import yaml
 from omegaconf import DictConfig, OmegaConf
 
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_DIR = REPO_ROOT / "configs"
 BASE_CONFIG = CONFIG_DIR / "base.yaml"
 
 _MISSING = object()
@@ -52,6 +53,12 @@ def load_config(
     _apply(cfg, _parse_cli(overrides), source="command line")
     OmegaConf.set_readonly(cfg, True)
     return cfg
+
+
+def resolve_path(path: str | Path) -> Path:
+    """Config paths are relative to the repository root, so commands work from any directory."""
+    path = Path(path)
+    return path if path.is_absolute() else REPO_ROOT / path
 
 
 def variants(config_path: Path) -> list[str]:
