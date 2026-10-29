@@ -11,6 +11,7 @@ dependencies = [ # What it needs to run (tested major.minor as the floor)
     "torchvision>=0.26",
     "ultralytics>=8.4",
     "omegaconf>=2.4",
+    "pyyaml>=6.0",
     "numpy>=2.2",
     "pandas>=3.0",
     "pillow>=12.3",

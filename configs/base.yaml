@@ -1,0 +1,61 @@
+# Shared baseline for every experiment.
+# Sweep files in configs/sweeps/ override a few keys per variant; command-line flags override
+# single keys (python -m plate_cloak run --config ... attack.eps.cb=6).
+# Units: budgets (eps) and step sizes are in 1/255 pixel levels; image sizes are in pixels.
+# Rationale for each value: docs/superpowers/specs/2026-10-20-plate-cloak-experiment-design.md
+
+seed: 42                  # attack randomness, evaluation subsampling, bootstrap
+device: cuda:0            # GPU for attack and evaluation (fine-tuning takes --device)
+
+data:
+  root: data/openimages_plates
+  eligible_list: splits/openimages_test_eligible.txt   # frozen by prepare-data, committed
+  imgsz: 640              # long side of every image the models see
+  min_plate_w: 40         # a plate counts for evaluation if at least this wide...
+  min_plate_h: 11         # ...and this tall at the 640 input (11 = the SSIM window)
+  n_eval: null            # null = every eligible test image; an int subsamples for quick runs
+
+models:
+  surrogate: {name: yolov8s, seed: 0}   # the model PGD attacks (white-box)
+  targets:                # every model the attacked images are shown to
+    - {name: yolov8s, seed: 0}     # the surrogate itself (white-box reference)
+    - {name: yolov8s, seed: 1}     # same architecture, retrained: transfer from retraining alone
+    - {name: yolov8s, seed: 2}
+    - {name: yolov10l, seed: 0}    # CNN transfer control, sized close to RT-DETR-L
+    - {name: yolov10l, seed: 1}
+    - {name: yolov10l, seed: 2}
+    - {name: rtdetr-l, seed: 0}    # Transformer transfer target (H1)
+    - {name: rtdetr-l, seed: 1}
+    - {name: rtdetr-l, seed: 2}
+  epochs: 100             # same for every model, no early stopping; confirm RT-DETR converges
+  batch: 16
+  workers: 8              # data-loader processes during fine-tuning
+
+attack:
+  method: pgd             # pgd | random (random sign noise at the same budget: the control)
+  space: ycbcr            # rgb | ycbcr
+  eps:                    # L_inf budget per channel
+    rgb: 8                # used when space = rgb
+    y: 2                  # luminance: eyes are most sensitive to brightness
+    cb: 8                 # placeholder until the Cb/Cr sweep picks the main value by rule (Task 12)
+    cr: 8
+  steps: 40
+  step_factor: 2.5        # per-step size = step_factor * eps / steps
+  margin: 0.10            # noise region = plate box grown by 10% on each side
+  mask: uniform           # uniform | sobel (milestone 2)
+  loss:
+    type: topk            # topk | hinge (picked in the Task 12 time box)
+    k: 100                # topk: push down the k most confident plate candidates
+    floor: 0.1            # hinge: only penalize candidates scoring above this
+  quant_margin: 0.5       # YCbCr only: reserve for 8-bit rounding so the budget holds on the saved image
+
+eval:
+  conf: 0.25              # detection confidence threshold, the same for every model
+  iou: 0.5                # a plate is found if a detection overlaps it with IoU >= 0.5
+  bootstrap:
+    n: 1000
+    ci: 0.95
+
+output:
+  runs_root: results/runs # committed: config, metrics, per-image results
+  cache_root: cache/adv   # git-ignored: adversarial images, keyed by attack fingerprint

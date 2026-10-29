@@ -11,8 +11,8 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest   # a fresh Linux VM with no GPU and nothing installed
     steps:
-      - uses: actions/checkout@v4          # get the repository's code
-      - uses: actions/setup-python@v5      # install Python and cache pip downloads between runs
+      - uses: actions/checkout@v7          # get the repository's code
+      - uses: actions/setup-python@v7      # install Python and cache pip downloads between runs
         with:
           python-version: "3.12"
           cache: pip

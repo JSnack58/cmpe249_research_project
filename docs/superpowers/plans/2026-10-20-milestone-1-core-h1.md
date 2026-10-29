@@ -123,9 +123,12 @@ CI workflow: ubuntu, Python 3.12, `pip install -e ".[dev]"` with the CPU torch i
   ```yaml
   id: cbcr_sweep
   description: ...
+  overrides: {models.targets: [{name: yolov8s, seed: 0}]}   # optional, shared by every variant
   variants:
     cb4: {attack.eps.cb: 4, attack.eps.cr: 4}
   ```
+  Precedence (last wins): base.yaml < sweep `overrides` < variant < command line. *(Added during Task 2.)*
+  `configs/base.yaml` also has a top-level `device: cuda:0` used by attack and evaluate. *(Added during Task 2.)*
 - `configs/base.yaml` keys (all later tasks read these): `seed: 42`; `data: {root: data/openimages_plates, eligible_list: splits/openimages_test_eligible.txt, imgsz: 640, min_plate_w: 40, min_plate_h: 11, n_eval: null}`; `models: {surrogate: {name: yolov8s, seed: 0}, targets: [...], epochs: 100, batch: 16, workers: 8}`; `attack: {method: pgd, space: ycbcr, eps: {rgb: 8, y: 2, cb: 8, cr: 8}, steps: 40, step_factor: 2.5, margin: 0.10, mask: uniform, loss: {type: topk, k: 100, floor: 0.1}, quant_margin: 0.5}`; `eval: {conf: 0.25, iou: 0.5, bootstrap: {n: 1000, ci: 0.95}}`; `output: {runs_root: results/runs, cache_root: cache/adv}`.
   `models.targets` lists `{name, seed}` for yolov8s seeds 0-2, yolov10l seeds 0-2, rtdetr-l seeds 0-2.
   YOLOv8s seeds 1 and 2 are same-architecture transfer targets: they show how much an attack weakens from retraining alone. *(Plan decision.)*
