@@ -48,6 +48,21 @@ Each entry notes where it came from.
   Fix: pinned optimizer settings (above); YOLO's are identical to what "auto" chose, so the finished yolov8s seed 0 run stays valid.
   Fine-tuning now refuses to resume or export a run whose last val mAP is below half its best.
   The diverged run is kept in `runs/finetune/rtdetr-l_s0_diverged_lr002/`.
+- **Fine-tuning results (2026-10-30, Task 4, 9 runs, 100 epochs, best-validation checkpoint kept).**
+  Validation mAP@0.5, mean ± standard deviation over seeds 0-2 (best epochs in brackets):
+
+  | Model | Parameters | mAP@0.5 | mAP@0.5:0.95 | Best epochs |
+  |---|---|---|---|---|
+  | YOLOv8s (surrogate) | 11.1 M | 0.897 ± 0.002 | 0.604 ± 0.008 | 58, 80, 47 |
+  | YOLOv10l (CNN control) | 25.8 M | 0.893 ± 0.003 | 0.602 ± 0.012 | 55, 84, 86 |
+  | RT-DETR-L (Transformer) | 32.8 M | 0.917 ± 0.001 | 0.646 ± 0.008 | 20, 17, 11 |
+
+  Seeds agree closely for every model, so RT-DETR's nondeterministic kernel (above) has no visible effect.
+  Convergence check: every curve has flattened. YOLO models plateau around epoch 50-80.
+  RT-DETR peaks within 20 epochs and then drifts down slowly (10-epoch mean about 0.912 to 0.895), mild overfitting that the best-validation checkpoint avoids, so no rerun with more epochs is needed.
+  RT-DETR is the most accurate model on clean images, which works against H1 (a more accurate detector is usually harder, not easier, to fool), so the clean-accuracy confound does not favor our hypothesis.
+  The surrogate and the CNN control are within 0.004 of each other.
+  Weights live only in `weights/` (git-ignored).
 
 ## Open
 

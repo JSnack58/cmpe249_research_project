@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - Pinned, isolated conda environment from `environment.yml` (no access to base Anaconda packages); exact versions, e.g. `torch==2.11.0`, `ultralytics==8.4.178`.
-- Before any GPU run: CPU core 6 offline (`echo 0 | sudo tee /sys/devices/system/cpu/cpu6/online /sys/devices/system/cpu/cpu22/online`, owner runs it), and jobs pinned with `taskset -c 0-5,7-21,23-31`. Confirm with the owner before launching any job longer than about 10 minutes.
+- Before any GPU run: CPU cores 6 and 7 offline and boost off (`echo 0 | sudo tee /sys/devices/system/cpu/cpu{6,7,22,23}/online` and `echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost`, owner runs them), and jobs pinned with `taskset -c 0-5,8-21,24-31`. Confirm with the owner before launching any job longer than about 10 minutes.
 - Datasets, weights and the adversarial cache are never committed; run folders under `results/runs/` are.
 - Markdown: one sentence per line, no em dashes. Commits: no AI co-author or sign-off lines.
 - Image size 640 (long side). Evaluation eligibility: largest plate at least 40 px wide and 11 px tall at the 640 input; smaller plates are ignore regions.
