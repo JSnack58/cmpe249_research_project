@@ -9,17 +9,25 @@
 #   journalctl --user -u plate-finetune -f   follow the log
 #   bash scripts/finetune_all.sh             run in this terminal instead
 #
-# Before starting, take the unstable CPU core 6 offline (lasts until reboot):
-#   echo 0 | sudo tee /sys/devices/system/cpu/cpu6/online /sys/devices/system/cpu/cpu22/online
+# Before starting, take the unstable CPU cores 6 and 7 offline and turn off boost (lasts until
+# reboot; see docs/experiment-decisions.md, Infrastructure):
+#   echo 0 | sudo tee /sys/devices/system/cpu/cpu{6,7,22,23}/online
+#   echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="${PYTHON:-$HOME/anaconda3/envs/plate-cloak/bin/python}"
-CPUS="0-5,7-21,23-31"  # every logical CPU except core 6 (threads 6 and 22)
+CPUS="0-5,8-21,24-31"  # every logical CPU except cores 6 and 7 (threads 6, 7, 22 and 23)
 
 if [[ "${1:-}" == "--start" ]]; then
-    if [[ "$(cat /sys/devices/system/cpu/cpu6/online)" != "0" ]]; then
-        echo "CPU core 6 is online; take it offline first (see the top of this script)." >&2
+    for cpu in 6 7 22 23; do
+        if [[ "$(cat /sys/devices/system/cpu/cpu$cpu/online)" != "0" ]]; then
+            echo "CPU $cpu is online; take cores 6 and 7 offline first (see the top of this script)." >&2
+            exit 1
+        fi
+    done
+    if [[ "$(cat /sys/devices/system/cpu/cpufreq/boost)" != "0" ]]; then
+        echo "CPU boost is on; turn it off first (see the top of this script)." >&2
         exit 1
     fi
     systemctl --user reset-failed plate-finetune 2>/dev/null || true

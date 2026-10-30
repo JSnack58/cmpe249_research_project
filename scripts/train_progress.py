@@ -50,8 +50,10 @@ def status_line() -> str:
     if not results.exists():
         return f"{head} starting..."
 
-    with results.open() as f:
-        rows = list(csv.DictReader(f, skipinitialspace=True))
+    # A hard crash mid-write can leave NUL bytes at the end of the file; drop them and any
+    # half-written last row.
+    text = results.read_text().replace("\x00", "")
+    rows = [r for r in csv.DictReader(text.splitlines(), skipinitialspace=True) if r.get("time")]
     if not rows:
         return f"{head} epoch 1 running..."
     total = epochs_planned(RUNS / current)

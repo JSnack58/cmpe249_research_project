@@ -182,3 +182,11 @@ def test_normal_dip_is_not_collapse(tmp_path):
     csv_path = tmp_path / "results.csv"
     csv_path.write_text("epoch,metrics/mAP50(B),metrics/mAP50-95(B)\n1,0.85,0.5\n2,0.72,0.4\n")
     ft.check_not_collapsed(csv_path)  # does not raise
+
+
+def test_truncated_checkpoint_gives_clear_error(tmp_path):
+    last = tmp_path / "rtdetr-l_s2" / "weights" / "last.pt"
+    last.parent.mkdir(parents=True)
+    last.write_bytes(b"PK\x03\x04 cut off mid-save")
+    with pytest.raises(RuntimeError, match="unreadable .* Move .*rtdetr-l_s2 aside"):
+        ft.checkpoint_epoch(last)

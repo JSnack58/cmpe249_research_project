@@ -95,6 +95,8 @@ Each entry notes where it came from.
 
 ## Infrastructure
 
-- The workstation's CPU core 6 (logical CPUs 6 and 22) is unstable.
-  Take it offline before GPU runs: `echo 0 | sudo tee /sys/devices/system/cpu/cpu6/online /sys/devices/system/cpu/cpu22/online`.
+- The workstation's CPU has uncorrectable machine-check errors under long training loads, first on core 6 and then, with core 6 offline, on core 7 (both on the hotter chiplet).
+  The BIOS update from F32 to F40d on 2026-10-29 made crashes much rarer but did not stop them (core 7 again on 2026-10-30).
+  Before GPU runs, take cores 6 and 7 offline and turn off boost: `echo 0 | sudo tee /sys/devices/system/cpu/cpu{6,7,22,23}/online` and `echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost`.
+  A crash while Ultralytics is saving can truncate `last.pt`; fine-tuning then stops with a message to move the run aside and retrain.
 - Use an isolated environment for the real experiment; the spike's venv inherits broken packages from base Anaconda.

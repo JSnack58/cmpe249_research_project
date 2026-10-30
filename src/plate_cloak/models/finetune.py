@@ -136,10 +136,20 @@ def _report_timing(results_csv: Path, run_name: str, epochs: int) -> Path:
 
 
 def checkpoint_epoch(path: Path) -> int:
-    """Epoch stored in an Ultralytics checkpoint (-1 once training has finished)."""
+    """Epoch stored in an Ultralytics checkpoint (-1 once training has finished).
+
+    Ultralytics does not write checkpoints atomically, so a hard crash mid-save leaves a
+    truncated file that cannot be resumed.
+    """
     import torch
 
-    return torch.load(path, map_location="cpu", weights_only=False).get("epoch", 0)
+    try:
+        return torch.load(path, map_location="cpu", weights_only=False).get("epoch", 0)
+    except RuntimeError as err:
+        raise RuntimeError(
+            f"{path} is unreadable (probably cut off by a crash while saving). Move "
+            f"{path.parents[1]} aside and retrain from scratch."
+        ) from err
 
 
 def check_not_collapsed(results_csv: Path) -> None:
