@@ -64,6 +64,16 @@ Each entry notes where it came from.
   The surrogate and the CNN control are within 0.004 of each other.
   Weights live only in `weights/` (git-ignored).
 
+- **AP is validated against pycocotools directly, not torchmetrics (2026-11-06, Task 9).**
+  Our single-class AP@0.5 matches the official pycocotools evaluator to 1e-9 on 5 random test sets of 50 images each, with ignored plates passed as crowd regions.
+  torchmetrics 1.9 wraps pycocotools, but its compute() returned 0.1866 where pycocotools gives 0.1896 on the same inputs.
+  Running pycocotools on torchmetrics' own exported files gives 0.1896, so the gap is inside torchmetrics, not in our data or our AP.
+  We keep all detections per image; COCO keeps the top 100, which never binds on plate images.
+- **PGD padding follows predict(), not Spike 01 (2026-11-06, Task 6).**
+  Ultralytics' predict() pads a 640-wide image to a multiple of 32 centered (a 427-row image gets 10 rows on top, 11 at the bottom) with gray 114.
+  Spike 01 padded at the bottom and right only, so its surrogate saw a slightly different layout during the attack than at evaluation.
+  PGD now pads exactly like predict(), and a test checks it against Ultralytics' own LetterBox.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**
