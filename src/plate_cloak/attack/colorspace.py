@@ -11,12 +11,14 @@ from __future__ import annotations
 import torch
 
 # Rows: how much R, G, B go into Y, Cb, Cr (see the spike notebook for the derivation).
+# Stored in float64 so the inverse and the audit are exact; .to(x) casts to x's dtype on use.
 RGB_TO_YCBCR = torch.tensor(
     [
         [0.299, 0.587, 0.114],
         [-0.168736, -0.331264, 0.5],
         [0.5, -0.418688, -0.081312],
-    ]
+    ],
+    dtype=torch.float64,
 )
 YCBCR_TO_RGB = torch.linalg.inv(RGB_TO_YCBCR)
 CHROMA_OFFSET = torch.tensor([0.0, 0.5, 0.5]).view(1, 3, 1, 1)

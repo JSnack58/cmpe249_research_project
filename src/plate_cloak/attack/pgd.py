@@ -156,7 +156,7 @@ def audit(clean_u8: np.ndarray, adv_u8: np.ndarray) -> dict[str, float]:
     if clean_u8.shape != adv_u8.shape:
         raise ValueError(f"shape mismatch: {clean_u8.shape} vs {adv_u8.shape}")
     diff_rgb = adv_u8.astype(np.float64) - clean_u8.astype(np.float64)  # already in 1/255 units
-    diff_ycc = diff_rgb @ RGB_TO_YCBCR.double().numpy().T  # the chroma offset cancels in a diff
+    diff_ycc = diff_rgb @ RGB_TO_YCBCR.numpy().T  # the chroma offset cancels in a diff
     rgb, ycc = np.abs(diff_rgb).max(axis=(0, 1)), np.abs(diff_ycc).max(axis=(0, 1))
     return {
         "R": float(rgb[0]),

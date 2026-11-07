@@ -50,6 +50,14 @@ def finetune(args: argparse.Namespace) -> int:
     return 0
 
 
+def attack(args: argparse.Namespace) -> int:
+    """Make (or reuse) the cached adversarial images for one config or sweep variant."""
+    from plate_cloak.attack.stage import run_attack
+
+    run_attack(load_config(args.config, args.overrides, variant=args.variant))
+    return 0
+
+
 def not_implemented(args: argparse.Namespace) -> int:
     """Placeholder for stages that are not built yet."""
     # args.command holds the subcommand name because of dest="command" below.
@@ -90,8 +98,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_finetune.set_defaults(func=finetune)
 
-    attack = sub.add_parser("attack", help="generate adversarial images on the surrogate (cached)")
-    attack.set_defaults(func=not_implemented)
+    p_attack = sub.add_parser(
+        "attack", help="generate adversarial images on the surrogate (cached)"
+    )
+    _add_config_args(p_attack)
+    p_attack.add_argument("--variant", help="variant name, when --config is a sweep file")
+    p_attack.set_defaults(func=attack)
 
     evaluate = sub.add_parser(
         "evaluate", help="measure every target model on clean and attacked images"
