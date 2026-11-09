@@ -58,6 +58,37 @@ def attack(args: argparse.Namespace) -> int:
     return 0
 
 
+def evaluate(args: argparse.Namespace) -> int:
+    """Score every target on the cached attack for this config; the cache must already exist."""
+    from plate_cloak.attack.stage import fingerprint
+    from plate_cloak.data.eval_images import eval_image_ids
+    from plate_cloak.evaluation.stage import evaluate as run_evaluate
+
+    cfg = load_config(args.config, args.overrides, variant=args.variant)
+    adv_dir = resolve_path(cfg.output.cache_root) / fingerprint(cfg, eval_image_ids(cfg))
+    if not (adv_dir / "done.json").exists():
+        variant = f" --variant {args.variant}" if args.variant else ""
+        raise FileNotFoundError(
+            f"no finished attack cache at {adv_dir}; first run: "
+            f"python -m plate_cloak attack --config {args.config}{variant} (same overrides)"
+        )
+    run_evaluate(cfg, adv_dir, _run_dir(cfg, args.name))
+    return 0
+
+
+def run(args: argparse.Namespace) -> int:
+    """Attack (or reuse the cache), then evaluate, for one config or sweep variant."""
+    from plate_cloak.attack.stage import run_attack
+    from plate_cloak.evaluation.stage import evaluate as run_evaluate
+
+    cfg = load_config(args.config, args.overrides, variant=args.variant)
+    run_dir = _run_dir(cfg, args.name)
+    if run_dir.exists():  # fail before the attack, which can take hours
+        raise FileExistsError(f"{run_dir} already exists; pick another --name")
+    run_evaluate(cfg, run_attack(cfg), run_dir)
+    return 0
+
+
 def not_implemented(args: argparse.Namespace) -> int:
     """Placeholder for stages that are not built yet."""
     # args.command holds the subcommand name because of dest="command" below.
@@ -102,16 +133,18 @@ def main(argv: list[str] | None = None) -> int:
         "attack", help="generate adversarial images on the surrogate (cached)"
     )
     _add_config_args(p_attack)
-    p_attack.add_argument("--variant", help="variant name, when --config is a sweep file")
+    _add_variant_arg(p_attack)
     p_attack.set_defaults(func=attack)
 
-    evaluate = sub.add_parser(
+    p_evaluate = sub.add_parser(
         "evaluate", help="measure every target model on clean and attacked images"
     )
-    evaluate.set_defaults(func=not_implemented)
+    _add_run_args(p_evaluate)
+    p_evaluate.set_defaults(func=evaluate)
 
-    run = sub.add_parser("run", help="attack then evaluate")
-    run.set_defaults(func=not_implemented)
+    p_run = sub.add_parser("run", help="attack then evaluate")
+    _add_run_args(p_run)
+    p_run.set_defaults(func=run)
 
     report = sub.add_parser("report", help="build the H1 table and charts from run folders")
     report.set_defaults(func=not_implemented)
@@ -124,3 +157,27 @@ def _add_config_args(parser: argparse.ArgumentParser) -> None:
     """--config plus trailing key=value overrides, shared by every config-driven stage."""
     parser.add_argument("--config", type=Path, default=BASE_CONFIG, help="config or sweep file")
     parser.add_argument("overrides", nargs="*", help="config overrides such as attack.eps.cb=6")
+
+
+def _add_variant_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--variant", help="variant name, when --config is a sweep file")
+
+
+def _add_run_args(parser: argparse.ArgumentParser) -> None:
+    """Options for stages that write a run folder: config, variant, and the run's name."""
+    _add_config_args(parser)
+    _add_variant_arg(parser)
+    parser.add_argument(
+        "--name", help="run folder name (default: timestamp plus settings that differ from base)"
+    )
+
+
+def _run_dir(cfg, name: str | None) -> Path:
+    """results/runs/<name>, with a generated name when none is given."""
+    from datetime import datetime
+
+    from plate_cloak.runs import run_name
+
+    if name is None:
+        name = run_name(cfg, load_config(BASE_CONFIG), datetime.now())
+    return resolve_path(cfg.output.runs_root) / name

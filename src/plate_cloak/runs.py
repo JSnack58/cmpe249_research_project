@@ -30,10 +30,15 @@ def run_name(cfg: DictConfig, base: DictConfig, now: datetime) -> str:
     return "_".join(parts)[:MAX_NAME_LEN]
 
 
-def create_run_dir(root: Path, name: str) -> Path:
-    """Create root/name; refuse if it exists, so earlier results can never be overwritten."""
+def check_run_name(name: str) -> None:
+    """Raise ValueError unless `name` is safe as a single folder name."""
     if not name or _UNSAFE.search(name) or name.startswith("."):
         raise ValueError(f"run name {name!r} may only use letters, digits, '.', '_', '-'")
+
+
+def create_run_dir(root: Path, name: str) -> Path:
+    """Create root/name; refuse if it exists, so earlier results can never be overwritten."""
+    check_run_name(name)
     run_dir = Path(root) / name
     run_dir.parent.mkdir(parents=True, exist_ok=True)
     run_dir.mkdir()  # raises FileExistsError if the run already exists
