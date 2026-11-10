@@ -1,0 +1,16 @@
+# Loss time box (Task 12): which suppression loss hides plates better from the surrogate?
+# Run on a 300-image subsample; the loss with the lower attacked YOLOv8s recall goes into
+# base.yaml, and the numbers and the choice are recorded in docs/experiment-decisions.md.
+#
+#   ./run_ablations.sh configs/sweeps/loss.yaml -- data.n_eval=300
+
+id: loss
+
+overrides:
+  models.targets: [{name: yolov8s, seed: 0}]  # only the white-box surrogate's recall matters
+
+variants:
+  topk_rgb8:  {attack.loss.type: topk,  attack.method: pgd, attack.space: rgb,   attack.eps.rgb: 8}
+  hinge_rgb8: {attack.loss.type: hinge, attack.method: pgd, attack.space: rgb,   attack.eps.rgb: 8}
+  topk_cb8:   {attack.loss.type: topk,  attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 8, attack.eps.cr: 8}
+  hinge_cb8:  {attack.loss.type: hinge, attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 8, attack.eps.cr: 8}

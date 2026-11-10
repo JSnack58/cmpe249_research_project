@@ -81,3 +81,20 @@ def test_every_variant_sets_its_own_budget_instead_of_inheriting_base():
         if keys.get("attack.space") == "ycbcr":
             needed |= {"attack.eps.y", "attack.eps.cb", "attack.eps.cr"}
         assert needed <= keys.keys(), (v, needed - keys.keys())
+
+
+LOSS = CONFIG_DIR / "sweeps" / "loss.yaml"
+
+
+def test_loss_sweep_pairs_each_loss_with_the_rgb8_and_cb8_attacks():
+    assert variants(LOSS) == ["topk_rgb8", "hinge_rgb8", "topk_cb8", "hinge_cb8"]
+    for budget in ("rgb8", "cb8"):
+        topk, hinge = (load_config(LOSS, variant=f"{t}_{budget}") for t in ("topk", "hinge"))
+        assert (topk.attack.loss.type, hinge.attack.loss.type) == ("topk", "hinge")
+        ft, fh = _flatten(topk), _flatten(hinge)
+        assert {k for k in ft if ft[k] != fh[k]} == {"attack.loss.type"}  # one factor
+        # Same attack as the matching cbcr variant, apart from the loss.
+        ref = _flatten(cbcr(budget))
+        assert {k for k in ft if ft[k] != ref[k]} <= {"attack.loss.type"}
+    for v in variants(LOSS):
+        assert [dict(t) for t in load_config(LOSS, variant=v).models.targets] == SURROGATE_ONLY
