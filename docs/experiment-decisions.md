@@ -86,6 +86,22 @@ Each entry notes where it came from.
   Top-k (sum of the 100 highest candidate scores) keeps pushing for all 40 steps, so plate scores sink to background level.
   Hinge also hides plates only from one threshold: lowering the threshold to about 0.05 at prediction time would recover them, which top-k does not allow.
   `attack.loss.type: topk` stays in base.yaml (it was already the default), so the provisional H1 runs (`prov_*`) used the chosen loss.
+- **Main YCbCr budget: Cb/Cr 12, by the pre-registered rule (2026-11-09, Task 12).**
+  Rule, fixed in the design doc before any sweep: the main Cb/Cr is the smallest value whose attacked YOLOv8s recall is within 0.05 of the RGB 8 attack's.
+  Sweep on all 1,731 eligible test images, YOLOv8s seed 0 only, top-k loss, Y fixed at 2; clean recall 0.958; runs `results/runs/cbcr_*`, report `results/reports/cbcr/`.
+
+  | Variant | Attacked recall | Gap to rgb8 | Within 0.05 | mAP@0.5 drop | Largest RGB change |
+  |---|---|---|---|---|---|
+  | rgb8 | 0.081 [0.069, 0.094] | | | 0.857 [0.836, 0.870] | 8 |
+  | cb4 | 0.376 [0.355, 0.399] | 0.295 | no | 0.496 [0.473, 0.517] | 8 (blue) |
+  | cb8 | 0.138 [0.123, 0.154] | 0.057 | no | 0.776 [0.754, 0.793] | 15 (blue) |
+  | cb12 | 0.054 [0.045, 0.065] | 0.027 | yes | 0.896 [0.879, 0.909] | 22 (blue) |
+  | random8 | 0.938 [0.928, 0.950] | | | 0.010 [0.005, 0.014] | 8 |
+
+  cb8 misses by 0.007; the rule uses point estimates and is applied as written, so the main budget is YCbCr (2, 12, 12), now in base.yaml.
+  The random control at the RGB 8 budget barely moves detection, so evasion comes from PGD's direction, not the noise size.
+  YCbCr (2, 12, 12) moves blue by up to 22/255, almost three times the RGB attack's limit; whether it is still less visible is H2's question.
+  The provisional H1 run `prov_h1_ycbcr_cb8` used the old placeholder (2, 8, 8) and is superseded by the milestone run.
 - **PGD padding follows predict(), not Spike 01 (2026-11-06, Task 6).**
   Ultralytics' predict() pads a 640-wide image to a multiple of 32 centered (a 427-row image gets 10 rows on top, 11 at the bottom) with gray 114.
   Spike 01 padded at the bottom and right only, so its surrogate saw a slightly different layout during the attack than at evaluation.
@@ -104,9 +120,6 @@ Each entry notes where it came from.
 - **SSIM definition.**
   Proposed: Wang et al. (2004) settings (Gaussian window, sigma 1.5, 11x11) with one fixed window, excluding plates smaller than the window rather than shrinking it.
   Decide RGB-SSIM, luminance-only SSIM, or both; Spike 01 showed they disagree about chroma noise, which can flip H2.
-- **YCbCr budget numbers.**
-  Turn "80% of the budget to chroma" into concrete Cb/Cr limits.
-  Note that Cb/Cr 8/255 moves RGB by up to about 14/255 (blue), so RGB 8/255 and YCbCr (2, 8, 8) are not equal-strength budgets.
 - **Budget enforcement in YCbCr.**
   Proposed: per-pixel gamut fit (shrink each pixel's noise vector until it fits in RGB) plus a 0.5/255 quantization margin, so the budget holds exactly on the saved image.
 - **Attack strength vs. the H2 target.**

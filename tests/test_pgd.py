@@ -60,9 +60,12 @@ def raw_of(net, x):
 
 
 def test_settings_from_base_config():
-    s = AttackSettings.from_cfg(load_config(BASE_CONFIG).attack)
+    attack = load_config(BASE_CONFIG).attack
+    s = AttackSettings.from_cfg(attack)
     assert s.space == "ycbcr" and s.method == "pgd" and s.steps == 40
-    assert torch.allclose(s.eps * 255, torch.tensor([2.0, 8.0, 8.0]))
+    # Budgets come from the config in 1/255 units, in Y, Cb, Cr order.
+    expected = torch.tensor([attack.eps.y, attack.eps.cb, attack.eps.cr], dtype=torch.float32)
+    assert torch.allclose(s.eps * 255, expected)
     assert s.loss == LossSettings("topk", 100, 0.1)
 
 

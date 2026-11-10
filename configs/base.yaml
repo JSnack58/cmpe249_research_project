@@ -37,8 +37,8 @@ attack:
   eps:                    # L_inf budget per channel
     rgb: 8                # used when space = rgb
     y: 2                  # luminance: eyes are most sensitive to brightness
-    cb: 8                 # placeholder until the Cb/Cr sweep picks the main value by rule (Task 12)
-    cr: 8
+    cb: 12                # chosen by the Cb/Cr sweep's rule (Task 12, docs/experiment-decisions.md)
+    cr: 12
   steps: 40
   step_factor: 2.5        # per-step size = step_factor * eps / steps
   margin: 0.10            # noise region = plate box grown by 10% on each side
