@@ -89,7 +89,11 @@ def test_attack_success_counts_only_plates_every_target_found_clean(tmp_path):
     run = write_synthetic_run(tmp_path / "r", clean_misses={("rtdetr-l", 0, "img000")})
     v = h1_verdict(run)
     assert v["attack_success"]["n_plates"] == 119
-    assert v["attack_success"]["rate"]["rtdetr-l"] == pytest.approx(35 / 119)
+    rate = v["attack_success"]["rate"]
+    assert rate["rtdetr-l"] == pytest.approx(35 / 119)
+    # Keyed like the table: the white-box surrogate is not averaged with its retrained seeds.
+    assert rate["yolov8s (white-box)"] == pytest.approx(107 / 119)  # misses img000..img107
+    assert rate["yolov8s (retrained)"] == pytest.approx(23 / 119)  # misses img000..img023
 
 
 def test_verdict_is_none_without_both_architectures(tmp_path):

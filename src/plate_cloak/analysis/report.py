@@ -155,7 +155,7 @@ def h1_verdict(
         "threshold": threshold,
         "difference": difference,
         "supported": bool(difference["point"] >= threshold and difference["low"] > 0),
-        "attack_success": _attack_success(run, targets),
+        "attack_success": _attack_success(run),
     }
 
 
@@ -178,11 +178,12 @@ def report(runs: list[Path], out: Path) -> None:
     print(f"report: wrote {out}")
 
 
-def _attack_success(run: Run, targets: list[tuple[str, int]]) -> dict:
+def _attack_success(run: Run) -> dict:
     """Share of plates missed when attacked, among plates every target found when clean.
 
     This isolates the attack's effect from plates some model never finds anyway.
-    Values are seed means per architecture.
+    Keyed like the table rows (the white-box surrogate apart from its retrained seeds);
+    values are seed means.
     """
     p = run.plates
     clean = p[p["condition"] == "clean"]
@@ -191,10 +192,12 @@ def _attack_success(run: Run, targets: list[tuple[str, int]]) -> dict:
     attacked = p[p["condition"] == "attacked"].set_index(["image_id", "plate_idx"])
     attacked = attacked[attacked.index.isin(kept)]
     rate = {}
-    for name in dict.fromkeys(t[0] for t in targets):
-        rows = attacked[attacked["model"] == name]
-        missed = 1 - rows.groupby("seed")["found"].mean()
-        rate[name] = float(missed.mean()) if len(missed) else float("nan")
+    for label, targets in architecture_rows(run.cfg).items():
+        per_seed = [
+            1 - attacked[(attacked["model"] == name) & (attacked["seed"] == seed)]["found"].mean()
+            for name, seed in targets
+        ]
+        rate[label] = float(np.mean(per_seed)) if len(kept) else float("nan")
     return {"n_plates": int(len(kept)), "rate": rate}
 
 
