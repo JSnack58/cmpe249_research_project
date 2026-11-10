@@ -32,6 +32,7 @@ from PIL import Image
 from plate_cloak.attack.pgd import AttackSettings, audit, pgd, random_sign_noise, to_uint8
 from plate_cloak.config import resolve_path
 from plate_cloak.data.eval_images import eval_image_ids, load_by_id
+from plate_cloak.progress import Progress
 from plate_cloak.runs import provenance
 
 AUDIT_COLUMNS = ["image_id", "R", "G", "B", "Y", "Cb", "Cr"]
@@ -67,7 +68,8 @@ def run_attack(cfg: DictConfig) -> Path:
     device = torch.device(cfg.device)
     net = load_surrogate(cfg).to(device)
     rows = []
-    for n, image_id in enumerate(ids, start=1):
+    bar = Progress(len(ids), "attack")
+    for image_id in ids:
         ev = load_by_id(cfg, image_id)
         clean = np.array(ev.image)  # (H, W, 3) uint8 RGB; np.array copies, so it is writable
         png = out / f"{image_id}.png"
@@ -77,8 +79,7 @@ def run_attack(cfg: DictConfig) -> Path:
             adv = _attack_one(net, clean, ev.boxes, s, cfg.seed, image_id, device)
             _save_png(adv, png)
         rows.append({"image_id": image_id, **audit(clean, adv)})
-        if n % 50 == 0 or n == len(ids):
-            print(f"attack: {n}/{len(ids)} images")
+        bar.update()
 
     worst = {k: max(r[k] for r in rows) for k in AUDIT_COLUMNS[1:]} if rows else {}
     _check_budget(worst, cfg.attack)

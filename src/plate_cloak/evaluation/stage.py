@@ -35,6 +35,7 @@ from plate_cloak.data.eval_images import eval_image_ids, load_by_id
 from plate_cloak.evaluation.detection import Pooled
 from plate_cloak.evaluation.matching import ImageMatch, match_image
 from plate_cloak.evaluation.stats import bootstrap_ci
+from plate_cloak.progress import Progress
 from plate_cloak.runs import check_run_name, create_run_dir, provenance, write_resolved_config
 
 CONF_FLOOR = 0.001  # keep near-misses: AP ranks every detection, recall applies eval.conf later
@@ -83,7 +84,8 @@ def evaluate(cfg: DictConfig, adv_dir: Path, run_dir: Path | None = None) -> dic
     models = {t: load_target(*t) for t in targets}
     matches = {(t, c): [] for t in targets for c in CONDITIONS}
     det_rows, plate_rows = [], []
-    for n, image_id in enumerate(ids, start=1):
+    bar = Progress(len(ids), "evaluate")
+    for image_id in ids:
         ev = load_by_id(cfg, image_id)
         adv = Image.open(adv_dir / f"{image_id}.png").convert("RGB")
         if adv.size != ev.image.size:
@@ -103,23 +105,24 @@ def evaluate(cfg: DictConfig, adv_dir: Path, run_dir: Path | None = None) -> dic
                     {**key, "plate_idx": int(idx), "found": int(f)}
                     for idx, f in zip(counted_idx, m.gt_found, strict=True)
                 ]
-        if n % 50 == 0 or n == len(ids):
-            print(f"evaluate: {n}/{len(ids)} images")
+        bar.update()
+
+    bar = Progress(len(targets), "bootstrap", unit="model")
+    target_metrics = {}
+    for name, seed in targets:
+        clean, attacked = matches[((name, seed), "clean")], matches[((name, seed), "attacked")]
+        target_metrics[f"{name}_s{seed}"] = {
+            "name": name,
+            "seed": seed,
+            **_target_metrics(clean, attacked, cfg),
+        }
+        bar.update()
 
     metrics = {
         "n_images": len(ids),
         "attack": {"fingerprint": adv_dir.name, "max_change": done["max_change"]},
         "eval": OmegaConf.to_container(cfg.eval, resolve=True),
-        "targets": {
-            f"{name}_s{seed}": {
-                "name": name,
-                "seed": seed,
-                **_target_metrics(
-                    matches[((name, seed), "clean")], matches[((name, seed), "attacked")], cfg
-                ),
-            }
-            for name, seed in targets
-        },
+        "targets": target_metrics,
         "provenance": provenance(),
     }
     if run_dir is not None:
