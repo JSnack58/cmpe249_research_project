@@ -49,6 +49,11 @@ attack:
     k: 100                # topk: push down the k most confident plate candidates
     floor: 0.1            # hinge: only penalize candidates scoring above this
   quant_margin: 0.5       # YCbCr only: reserve for 8-bit rounding so the budget holds on the saved image
+  # Transfer techniques (milestone 2); these values are off, which is milestone 1's attack.
+  momentum: 0.0           # MI-FGSM decay mu (1.0 when on): step along a running gradient sum
+  diversity:              # DI: each step, with chance p, shrink the input to a random scale and
+    p: 0.0                #   pad it back at a random offset (p 0.5 when on)
+    min_scale: 0.9
 
 eval:
   conf: 0.25              # detection confidence threshold, the same for every model

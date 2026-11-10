@@ -126,7 +126,7 @@ def image_seed(seed: int, image_id: str) -> int:
 def _attack_one(net, clean_u8, boxes, s: AttackSettings, seed, image_id, device) -> np.ndarray:
     x = torch.from_numpy(clean_u8).permute(2, 0, 1)[None].float().div(255).to(device)
     if s.method == "pgd":
-        adv = pgd(net, x, boxes, s)
+        adv = pgd([net], x, boxes, s)
     elif s.method == "random":
         generator = torch.Generator(device=device).manual_seed(image_seed(seed, image_id))
         adv = random_sign_noise(x, boxes, s, generator)

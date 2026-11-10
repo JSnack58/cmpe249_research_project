@@ -1,13 +1,19 @@
 import numpy as np
 import pytest
 import torch
-from detectors import TinyDetector
+import torch.nn.functional as F
+from detectors import Scaled, TinyDetector
 
 from plate_cloak.attack.losses import anchors_on_plates, hinge_loss, topk_loss
 from plate_cloak.attack.pgd import (
+    PAD_VALUE,
     AttackSettings,
     LossSettings,
+    _apply,
+    _bound,
+    _project,
     audit,
+    diverse,
     pgd,
     plate_mask,
     predict_padding,
@@ -17,7 +23,9 @@ from plate_cloak.attack.pgd import (
 from plate_cloak.config import BASE_CONFIG, load_config
 
 
-def settings(space="rgb", eps=None, steps=10, loss="topk", method="pgd"):
+def settings(
+    space="rgb", eps=None, steps=10, loss="topk", method="pgd", momentum=0.0, diversity_p=0.0
+):
     """AttackSettings from base.yaml with a few test-friendly changes."""
     s = AttackSettings.from_cfg(load_config(BASE_CONFIG).attack)
     if eps is None:
@@ -32,7 +40,14 @@ def settings(space="rgb", eps=None, steps=10, loss="topk", method="pgd"):
         mask=s.mask,
         loss=LossSettings(loss, s.loss.k, s.loss.floor),
         quant_margin=s.quant_margin,
+        momentum=momentum,
+        diversity_p=diversity_p,
+        diversity_min_scale=s.diversity_min_scale,
     )
+
+
+def gen(seed=0):
+    return torch.Generator().manual_seed(seed)
 
 
 def fixture_image_with_plate(h=200, w=256, seed=0):
@@ -67,6 +82,8 @@ def test_settings_from_base_config():
     expected = torch.tensor([attack.eps.y, attack.eps.cb, attack.eps.cr], dtype=torch.float32)
     assert torch.allclose(s.eps * 255, expected)
     assert s.loss == LossSettings("topk", 100, 0.1)
+    # The transfer techniques are off by default, so base.yaml is still milestone 1's attack.
+    assert s.momentum == 0.0 and s.diversity_p == 0.0 and s.diversity_min_scale == 0.9
 
 
 def test_settings_rgb_uses_one_budget_for_all_channels():
@@ -139,7 +156,7 @@ def test_padding_matches_ultralytics_predict():
 def test_pgd_lowers_loss_and_stays_on_plates(space):
     x, boxes = fixture_image_with_plate()
     net = TinyDetector()
-    adv = pgd(net, x, boxes, settings(space=space))
+    adv = pgd([net], x, boxes, settings(space=space))
     assert topk_loss(raw_of(net, adv), 100) < topk_loss(raw_of(net, x), 100)
     outside = 1 - plate_mask(*x.shape[-2:], boxes, 0.10)
     assert ((adv - x).abs() * outside).max() == 0
@@ -149,7 +166,7 @@ def test_pgd_lowers_loss_and_stays_on_plates(space):
 def test_pgd_with_hinge_loss_lowers_it():
     x, boxes = fixture_image_with_plate()
     net = TinyDetector()
-    adv = pgd(net, x, boxes, settings(loss="hinge"))
+    adv = pgd([net], x, boxes, settings(loss="hinge"))
 
     def hinge(img):
         left, _, top, _ = predict_padding(*img.shape[-2:])
@@ -161,7 +178,7 @@ def test_pgd_with_hinge_loss_lowers_it():
 
 def test_ycbcr_budget_holds_after_rounding_on_white_plate():
     x, boxes = fixture_white_plate()
-    adv = pgd(TinyDetector(), x, boxes, settings(space="ycbcr", eps=(2, 8, 8), steps=40))
+    adv = pgd([TinyDetector()], x, boxes, settings(space="ycbcr", eps=(2, 8, 8), steps=40))
     a = audit(to_uint8(x), to_uint8(adv))
     assert a["Y"] <= 2.0 and a["Cb"] <= 8.0 and a["Cr"] <= 8.0
     assert a["Cb"] > 4.0 or a["Cr"] > 4.0  # the attack did use the chroma budget
@@ -169,30 +186,119 @@ def test_ycbcr_budget_holds_after_rounding_on_white_plate():
 
 def test_rgb_budget_holds_after_rounding():
     x, boxes = fixture_white_plate()
-    a = audit(to_uint8(x), to_uint8(pgd(TinyDetector(), x, boxes, settings(space="rgb"))))
+    a = audit(to_uint8(x), to_uint8(pgd([TinyDetector()], x, boxes, settings(space="rgb"))))
     assert max(a["R"], a["G"], a["B"]) <= 8.0
 
 
 def test_non_multiple_of_32_input_round_trips_shape():
     x = torch.rand(1, 3, 427, 640)
     net = TinyDetector()
-    adv = pgd(net, x, np.array([[100.0, 200.0, 300.0, 260.0]]), settings(steps=2))
+    adv = pgd([net], x, np.array([[100.0, 200.0, 300.0, 260.0]]), settings(steps=2))
     assert adv.shape == x.shape
     assert set(net.seen_shapes) == {(1, 3, 448, 640)}
 
 
 def test_pgd_is_deterministic_and_works_under_no_grad():
     x, boxes = fixture_image_with_plate()
-    first = pgd(TinyDetector(), x, boxes, settings(space="ycbcr"))
+    first = pgd([TinyDetector()], x, boxes, settings(space="ycbcr"))
     with torch.no_grad():
-        second = pgd(TinyDetector(), x, boxes, settings(space="ycbcr"))
+        second = pgd([TinyDetector()], x, boxes, settings(space="ycbcr"))
     assert torch.equal(first, second)
 
 
 def test_pgd_refuses_a_model_in_training_mode():
     x, boxes = fixture_image_with_plate()
     with pytest.raises(ValueError, match="eval mode"):
-        pgd(TinyDetector().train(), x, boxes, settings())
+        pgd([TinyDetector().train()], x, boxes, settings())
+
+
+# --- transfer techniques: ensemble, momentum, input diversity -------------------------------
+
+
+def test_defaults_reproduce_plain_pgd():
+    """One surrogate, no momentum, no diversity: exactly milestone 1's sign-gradient step."""
+    x, boxes = fixture_image_with_plate()
+    net, s = TinyDetector(), settings(space="ycbcr")
+    left, right, top, bottom = predict_padding(*x.shape[-2:])
+    eps = s.eps.view(1, 3, 1, 1)
+    bound, step = _bound(x, boxes, s), s.step_factor * eps / s.steps
+    delta = torch.zeros_like(x)
+    for _ in range(s.steps):
+        delta.requires_grad_(True)
+        adv = _apply(x, delta, s.space)
+        raw = net(F.pad(adv, (left, right, top, bottom), value=PAD_VALUE))[0]
+        (grad,) = torch.autograd.grad(topk_loss(raw, s.loss.k), delta)
+        with torch.no_grad():
+            delta = _project(x, delta - step * grad.sign(), bound, s.space)
+    expected = _apply(x, delta.detach(), s.space)
+    assert torch.equal(pgd([net], x, boxes, s), expected)
+
+
+def test_ensemble_lowers_every_members_loss():
+    x, boxes = fixture_image_with_plate()
+    nets = [TinyDetector(0), TinyDetector(1)]
+    adv = pgd(nets, x, boxes, settings())
+    for net in nets:
+        assert topk_loss(raw_of(net, adv), 100) < topk_loss(raw_of(net, x), 100)
+
+
+def test_ensemble_normalizes_each_member():
+    # A member whose loss is 1000 times larger must not dominate: each loss is divided by its
+    # value on the clean image.
+    x, boxes = fixture_image_with_plate()
+    plain = pgd([TinyDetector(0), TinyDetector(1)], x, boxes, settings())
+    scaled = pgd([TinyDetector(0), Scaled(TinyDetector(1), 1000.0)], x, boxes, settings())
+    assert torch.equal(plain, scaled)
+
+
+def test_momentum_changes_the_path_and_keeps_the_budget():
+    x, boxes = fixture_image_with_plate()
+    net = TinyDetector()
+    plain = pgd([net], x, boxes, settings(momentum=0.0))
+    mom = pgd([net], x, boxes, settings(momentum=1.0))
+    assert not torch.equal(plain, mom)
+    assert topk_loss(raw_of(net, mom), 100) < topk_loss(raw_of(net, x), 100)
+    outside = 1 - plate_mask(*x.shape[-2:], boxes, 0.10)
+    assert ((mom - x).abs() * outside).max() == 0
+    assert (mom - x).abs().max() <= 8 / 255 + 1e-6
+
+
+def test_diverse_keeps_the_shape():
+    x = torch.rand(1, 3, 448, 640)
+    g = gen()
+    for _ in range(20):
+        assert diverse(x, 1.0, 0.9, g).shape == x.shape
+    assert torch.equal(diverse(x, 0.0, 0.9, g), x)  # p = 0: never transformed
+
+
+def test_diversity_is_reproducible_and_stays_on_the_stride():
+    x, boxes = fixture_image_with_plate()
+    s = settings(diversity_p=0.5)
+    net = TinyDetector()
+    a = pgd([net], x, boxes, s, generator=gen(7))
+    b = pgd([net], x, boxes, s, generator=gen(7))
+    c = pgd([net], x, boxes, s, generator=gen(8))
+    assert torch.equal(a, b) and not torch.equal(a, c)
+    assert all(h % 32 == 0 and w % 32 == 0 for *_, h, w in net.seen_shapes)
+
+
+def test_diversity_needs_a_generator():
+    x, boxes = fixture_image_with_plate()
+    with pytest.raises(ValueError, match="generator"):
+        pgd([TinyDetector()], x, boxes, settings(diversity_p=0.5))
+
+
+def test_diversity_with_hinge_is_refused():
+    # DI moves the plates inside the input, so the hinge loss's plate candidates would be wrong.
+    x, boxes = fixture_image_with_plate()
+    with pytest.raises(ValueError, match="hinge"):
+        pgd([TinyDetector()], x, boxes, settings(loss="hinge", diversity_p=0.5), generator=gen())
+
+
+def test_pgd_needs_at_least_one_surrogate():
+    x, boxes = fixture_image_with_plate()
+    with pytest.raises(ValueError, match="surrogate"):
+        pgd([], x, boxes, settings())
 
 
 # --- random control -------------------------------------------------------------------------

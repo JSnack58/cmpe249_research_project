@@ -8,10 +8,17 @@ space="ycbcr". YCbCr noise is applied to the image as the RGB change it causes,
 `x + YCBCR_TO_RGB @ delta`. That is the same as converting to YCbCr, adding delta and converting
 back (the conversion is linear), but it leaves pixels with zero noise bit-for-bit unchanged
 instead of picking up float round-off from the round trip.
+
+Three switches make the noise transfer to models it was not computed on (milestone 2). All are off
+by default, which is exactly milestone 1's attack:
+- an ensemble: several surrogates, each step following their combined loss;
+- momentum (MI-FGSM): steps follow a running average of gradient directions;
+- input diversity (DI): each step shows the surrogates a randomly shrunk and shifted input.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -45,6 +52,9 @@ class AttackSettings:
     mask: Literal["uniform", "sobel"]
     loss: LossSettings
     quant_margin: float  # YCbCr only, in 1/255 units: reserved for 8-bit rounding
+    momentum: float = 0.0  # MI-FGSM decay mu; 0 = plain PGD
+    diversity_p: float = 0.0  # DI: chance per step of a random resize-and-pad; 0 = off
+    diversity_min_scale: float = 0.9  # DI: smallest resize factor
 
     @classmethod
     def from_cfg(cls, attack) -> AttackSettings:
@@ -67,6 +77,9 @@ class AttackSettings:
             mask=attack.mask,
             loss=LossSettings(attack.loss.type, attack.loss.k, attack.loss.floor),
             quant_margin=attack.quant_margin,
+            momentum=attack.momentum,
+            diversity_p=attack.diversity.p,
+            diversity_min_scale=attack.diversity.min_scale,
         )
 
 
@@ -96,35 +109,84 @@ def predict_padding(h: int, w: int) -> tuple[int, int, int, int]:
     return left, dw - left, top, dh - top
 
 
-def pgd(net: nn.Module, x: Tensor, boxes: np.ndarray, s: AttackSettings) -> Tensor:
-    """Run PGD against `net` (the surrogate) and return the adversarial image in [0, 1].
+def pgd(
+    nets: Sequence[nn.Module],
+    x: Tensor,
+    boxes: np.ndarray,
+    s: AttackSettings,
+    generator: torch.Generator | None = None,
+) -> Tensor:
+    """Run PGD against the surrogates `nets` and return the adversarial image in [0, 1].
 
     Each step moves the noise against the sign of the loss gradient, clips it to the budget
     (which is 0 off the plates), then keeps the result inside the valid color range.
-    The start is zero noise, so the attack is deterministic.
+    With several surrogates the loss is the mean of each one's loss divided by its value on the
+    clean image, so every surrogate counts equally however large its scores are.
+    `generator` (on the CPU) drives input diversity and is required when it is on; seed it per
+    image so an interrupted run redoes an image with the same draws.
+    The start is zero noise. On CPU the result is deterministic; on GPU cuDNN's backward pass is
+    not, and a tiny gradient difference can flip a pixel's step (see experiment-decisions.md).
     """
     if s.method != "pgd":
         raise ValueError(f"pgd() got method={s.method!r}; use random_sign_noise for the control")
-    if net.training:
-        raise ValueError("put the surrogate in eval mode first (BatchNorm would update)")
+    if not nets:
+        raise ValueError("pgd() needs at least one surrogate")
+    if any(net.training for net in nets):
+        raise ValueError("put every surrogate in eval mode first (BatchNorm would update)")
+    if s.diversity_p > 0:
+        if generator is None:
+            raise ValueError("input diversity needs a generator (seed it per image)")
+        if s.loss.type != "topk":
+            raise ValueError("input diversity moves the plates, so it cannot be used with hinge")
 
     eps = s.eps.to(x).view(1, 3, 1, 1)
     bound = _bound(x, boxes, s)
     step = s.step_factor * eps / s.steps
-    left, right, top, bottom = predict_padding(*x.shape[-2:])
+    padding = predict_padding(*x.shape[-2:])
+    left, _, top, _ = padding
     boxes_padded = np.asarray(boxes, dtype=np.float64).reshape(-1, 4) + [left, top, left, top]
 
+    with torch.no_grad():  # each surrogate's loss on the clean image, the scale of its loss
+        clean = F.pad(x, padding, value=PAD_VALUE)
+        scale = [_loss(_raw(net(clean)), boxes_padded, s.loss).clamp_min(1e-12) for net in nets]
+
     delta = torch.zeros_like(x)
+    velocity = torch.zeros_like(x)
     for _ in range(s.steps):
         with torch.enable_grad():  # works even if the caller is inside torch.no_grad()
             delta.requires_grad_(True)
-            adv = _apply(x, delta, s.space)
-            raw = _raw(net(F.pad(adv, (left, right, top, bottom), value=PAD_VALUE)))
-            (grad,) = torch.autograd.grad(_loss(raw, boxes_padded, s.loss), delta)
+            seen = F.pad(_apply(x, delta, s.space), padding, value=PAD_VALUE)
+            if s.diversity_p > 0:
+                seen = diverse(seen, s.diversity_p, s.diversity_min_scale, generator)
+            losses = [
+                _loss(_raw(net(seen)), boxes_padded, s.loss) / c
+                for net, c in zip(nets, scale, strict=True)
+            ]
+            (grad,) = torch.autograd.grad(torch.stack(losses).mean(), delta)
         with torch.no_grad():
-            delta = _project(x, delta - step * grad.sign(), bound, s.space)
+            # Momentum: the gradient scaled to mean size 1, added to the decayed running sum.
+            velocity = s.momentum * velocity + grad / grad.abs().mean().clamp_min(1e-12)
+            delta = _project(x, delta - step * velocity.sign(), bound, s.space)
     with torch.no_grad():
         return _apply(x, delta, s.space)
+
+
+def diverse(x: Tensor, p: float, min_scale: float, generator: torch.Generator) -> Tensor:
+    """Input diversity: with probability p, shrink x by a random factor in [min_scale, 1] and
+    pad it back to its own size at a random offset; otherwise return x unchanged.
+
+    The output has x's shape, so a padded input whose sides are multiples of 32 stays one.
+    Every random draw comes from `generator` (CPU), so the same seed gives the same draws.
+    """
+    if torch.rand(1, generator=generator).item() >= p:
+        return x
+    h, w = x.shape[-2:]
+    factor = min_scale + (1 - min_scale) * torch.rand(1, generator=generator).item()
+    nh, nw = max(1, round(h * factor)), max(1, round(w * factor))
+    top = int(torch.randint(0, h - nh + 1, (1,), generator=generator))
+    left = int(torch.randint(0, w - nw + 1, (1,), generator=generator))
+    small = F.interpolate(x, size=(nh, nw), mode="bilinear", align_corners=False)
+    return F.pad(small, (left, w - nw - left, top, h - nh - top), value=PAD_VALUE)
 
 
 def random_sign_noise(

@@ -36,3 +36,20 @@ class TinyDetector(nn.Module):
         size = torch.full_like(cx, 32.0)
         boxes = torch.stack([cx, cy, size, size]).reshape(1, 4, -1)
         return torch.cat([boxes, score.reshape(1, 1, -1)], dim=1), None
+
+
+class Scaled(nn.Module):
+    """Wraps a detector and multiplies its plate scores by `factor`.
+
+    Top-k only sums scores, so this multiplies the wrapped model's loss by `factor` and changes
+    nothing else: the same candidates, the same gradient direction.
+    """
+
+    def __init__(self, net: nn.Module, factor: float):
+        super().__init__()
+        self.inner, self.factor = net, factor
+        self.eval()
+
+    def forward(self, x):
+        y, extra = self.inner(x)
+        return torch.cat([y[:, :4], y[:, 4:] * self.factor], dim=1), extra
