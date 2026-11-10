@@ -1,0 +1,118 @@
+{
+  "loss_topk_rgb8": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.10714586616672778,
+        "attacked_map50_low": 0.07275015497902217,
+        "attacked_map50_high": 0.15373738902669884,
+        "drop_map50": 0.8639646648264154,
+        "drop_map50_low": 0.81757333048319,
+        "drop_map50_high": 0.9010064132435806,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.07717041800643087,
+        "attacked_recall50_low": 0.04838709677419355,
+        "attacked_recall50_high": 0.1114738711055941,
+        "drop_recall50": 0.8842443729903537,
+        "drop_recall50_low": 0.8446548004314994,
+        "drop_recall50_high": 0.9185733850839713,
+        "drop_seed_min": 0.8639646648264154,
+        "drop_seed_max": 0.8639646648264154
+      }
+    ],
+    "verdict": null
+  },
+  "loss_hinge_rgb8": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.53393463134681,
+        "attacked_map50_low": 0.4903870406635138,
+        "attacked_map50_high": 0.5954670698747491,
+        "drop_map50": 0.4371758996463332,
+        "drop_map50_low": 0.37657875708320293,
+        "drop_map50_high": 0.4758526084568019,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.08038585209003216,
+        "attacked_recall50_low": 0.04854368932038835,
+        "attacked_recall50_high": 0.11401349464867379,
+        "drop_recall50": 0.8810289389067525,
+        "drop_recall50_low": 0.8434379352011141,
+        "drop_recall50_high": 0.9166666666666666,
+        "drop_seed_min": 0.4371758996463332,
+        "drop_seed_max": 0.4371758996463332
+      }
+    ],
+    "verdict": null
+  },
+  "loss_topk_cb8": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.1776468272123962,
+        "attacked_map50_low": 0.13341149941687197,
+        "attacked_map50_high": 0.22855810253514988,
+        "drop_map50": 0.7934637037807469,
+        "drop_map50_low": 0.7430453382693356,
+        "drop_map50_high": 0.8378223389042878,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.13504823151125403,
+        "attacked_recall50_low": 0.09903364807390977,
+        "attacked_recall50_high": 0.1762820512820513,
+        "drop_recall50": 0.8263665594855306,
+        "drop_recall50_low": 0.780934940855323,
+        "drop_recall50_high": 0.8671049407921602,
+        "drop_seed_min": 0.7934637037807469,
+        "drop_seed_max": 0.7934637037807469
+      }
+    ],
+    "verdict": null
+  },
+  "loss_hinge_cb8": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.5252297077687259,
+        "attacked_map50_low": 0.4755798359616875,
+        "attacked_map50_high": 0.5938879132256236,
+        "drop_map50": 0.44588082322441724,
+        "drop_map50_low": 0.3821936860652445,
+        "drop_map50_high": 0.49313838151786543,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.1189710610932476,
+        "attacked_recall50_low": 0.08358793133558655,
+        "attacked_recall50_high": 0.15823655319323257,
+        "drop_recall50": 0.842443729903537,
+        "drop_recall50_low": 0.7980761400651466,
+        "drop_recall50_high": 0.8819721729142737,
+        "drop_seed_min": 0.44588082322441724,
+        "drop_seed_max": 0.44588082322441724
+      }
+    ],
+    "verdict": null
+  }
+}

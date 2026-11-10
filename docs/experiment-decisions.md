@@ -68,7 +68,24 @@ Each entry notes where it came from.
   Our single-class AP@0.5 matches the official pycocotools evaluator to 1e-9 on 5 random test sets of 50 images each, with ignored plates passed as crowd regions.
   torchmetrics 1.9 wraps pycocotools, but its compute() returned 0.1866 where pycocotools gives 0.1896 on the same inputs.
   Running pycocotools on torchmetrics' own exported files gives 0.1896, so the gap is inside torchmetrics, not in our data or our AP.
-  We keep all detections per image; COCO keeps the top 100, which never binds on plate images.
+  We keep all detections per image; COCO keeps the top 100.
+  That cap never binds for YOLO (about 16-21 boxes per image above the 0.001 floor), but RT-DETR returns all 300 of its queries, so its AP includes boxes COCO would drop; they rank below its real detections and barely move AP.
+- **Loss: top-k, chosen in the loss time box (2026-11-09, Task 12).**
+  YOLOv8s seed 0 attacked on 300 eligible test images (seed-42 subsample), clean recall 0.961 and mAP@0.5 0.971; runs `results/runs/loss_*`, report `results/reports/loss/`.
+
+  | Attack | Loss | Attacked recall | Attacked mAP@0.5 | mAP@0.5 drop |
+  |---|---|---|---|---|
+  | RGB 8 | top-k | 0.077 [0.048, 0.111] | 0.107 | 0.864 [0.818, 0.901] |
+  | RGB 8 | hinge | 0.080 [0.049, 0.114] | 0.534 | 0.437 [0.377, 0.476] |
+  | YCbCr (2, 8, 8) | top-k | 0.135 [0.099, 0.176] | 0.178 | 0.793 [0.743, 0.838] |
+  | YCbCr (2, 8, 8) | hinge | 0.119 [0.084, 0.158] | 0.525 | 0.446 [0.382, 0.493] |
+
+  The planned rule (lower attacked recall wins) gives a tie: top-k wins on RGB by 0.003, hinge on YCbCr by 0.016, with nearly identical CIs.
+  We broke the tie with mAP@0.5, the H1 metric, where top-k's drop is about twice hinge's on both budgets with CIs far apart (paired: same images and resamples).
+  Why they differ: hinge (floor 0.1) stops pushing once a candidate is under 0.1, so plates fall below the 0.25 threshold but stay ranked above most false alarms, and AP barely moves.
+  Top-k (sum of the 100 highest candidate scores) keeps pushing for all 40 steps, so plate scores sink to background level.
+  Hinge also hides plates only from one threshold: lowering the threshold to about 0.05 at prediction time would recover them, which top-k does not allow.
+  `attack.loss.type: topk` stays in base.yaml (it was already the default), so the provisional H1 runs (`prov_*`) used the chosen loss.
 - **PGD padding follows predict(), not Spike 01 (2026-11-06, Task 6).**
   Ultralytics' predict() pads a 640-wide image to a multiple of 32 centered (a 427-row image gets 10 rows on top, 11 at the bottom) with gray 114.
   Spike 01 padded at the bottom and right only, so its surrogate saw a slightly different layout during the attack than at evaluation.
@@ -95,9 +112,6 @@ Each entry notes where it came from.
 - **Attack strength vs. the H2 target.**
   Spike 01 reached recall of about 0.25, not the 0.05 target; small plates survive most.
   Options: hinge loss on candidates above a threshold, more steps, or restating the target.
-- **Loss function.**
-  Current: sum of the top 100 raw plate confidences.
-  Candidate: hinge that only penalizes candidates above about 0.1, and only those overlapping the plate.
 - **OCR metric without text labels.**
   Neither candidate dataset has plate text.
   Proposed: CER of EasyOCR's read on the adversarial image against its read on the clean image.
