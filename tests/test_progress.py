@@ -40,6 +40,26 @@ def test_terminal_redraws_one_line_in_place():
     assert text.count("\r") == 3 and text.count("\n") == 1 and text.endswith("\n")
 
 
+def test_terminal_line_is_cut_to_the_terminal_width():
+    # A line wider than the terminal wraps, and \r then redraws only its last row.
+    clock, out = FakeClock(), Tty()
+    p = Progress(1731, "attack", stream=out, clock=clock, columns=lambda: 50)
+    clock.t += 1
+    p.update()
+    for line in out.getvalue().split("\r")[1:]:
+        shown = line.replace("\x1b[K", "").rstrip("\n")
+        assert len(shown) <= 49, shown
+        assert shown.endswith("1731   0%"), shown  # whole fields only, never a cut-off word
+
+
+def test_log_lines_are_never_cut():
+    clock, out = FakeClock(), io.StringIO()
+    p = Progress(1731, "attack", every=0, stream=out, clock=clock, columns=lambda: 40)
+    clock.t += 1
+    p.update()
+    assert len(out.getvalue().rstrip("\n")) > 40
+
+
 def test_hours_and_unknown_time_left():
     clock, out = FakeClock(), io.StringIO()
     p = Progress(10, "attack", every=0, stream=out, clock=clock)
