@@ -89,11 +89,12 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def not_implemented(args: argparse.Namespace) -> int:
-    """Placeholder for stages that are not built yet."""
-    # args.command holds the subcommand name because of dest="command" below.
-    print(f"{args.command}: not implemented yet")
-    return 1  # non-zero exit code = the stage did not succeed
+def report(args: argparse.Namespace) -> int:
+    """Build the H1 table, verdict and chart from one or more run folders."""
+    from plate_cloak.analysis.report import report as run_report
+
+    run_report(args.runs, args.out)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -146,8 +147,10 @@ def main(argv: list[str] | None = None) -> int:
     _add_run_args(p_run)
     p_run.set_defaults(func=run)
 
-    report = sub.add_parser("report", help="build the H1 table and charts from run folders")
-    report.set_defaults(func=not_implemented)
+    p_report = sub.add_parser("report", help="build the H1 table and charts from run folders")
+    p_report.add_argument("--runs", type=Path, nargs="+", required=True, help="run folders")
+    p_report.add_argument("--out", type=Path, required=True, help="folder for the report files")
+    p_report.set_defaults(func=report)
 
     args = parser.parse_args(argv)
     return args.func(args)  # run the chosen stage; its return value becomes the exit code

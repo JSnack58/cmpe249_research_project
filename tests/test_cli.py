@@ -38,8 +38,3 @@ def test_finetune_rejects_unknown_model():
 
     with pytest.raises(SystemExit):
         cli.main(["finetune", "--model", "yolov99", "--seed", "0"])
-
-
-def test_unbuilt_stage_reports_not_implemented(capsys):
-    assert cli.main(["report"]) == 1
-    assert "not implemented" in capsys.readouterr().out
