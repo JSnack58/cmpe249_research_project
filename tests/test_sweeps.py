@@ -1,0 +1,83 @@
+"""Checks on the committed sweep files: each variant changes one factor and nothing else."""
+
+import yaml
+
+from plate_cloak.config import BASE_CONFIG, CONFIG_DIR, load_config, variants
+from plate_cloak.runs import _flatten
+
+CBCR = CONFIG_DIR / "sweeps" / "cbcr.yaml"
+SURROGATE_ONLY = [{"name": "yolov8s", "seed": 0}]
+
+
+def cbcr(variant):
+    return load_config(CBCR, variant=variant)
+
+
+def changed_keys(cfg):
+    """Dotted keys whose value differs from base.yaml."""
+    base = _flatten(load_config(BASE_CONFIG))
+    return {k for k, v in _flatten(cfg).items() if base[k] != v}
+
+
+def test_cbcr_has_the_five_planned_variants_in_order():
+    assert variants(CBCR) == ["rgb8", "cb4", "cb8", "cb12", "random8"]
+
+
+def test_cbcr_only_shows_the_attacks_to_the_surrogate():
+    # The budget rule only needs the white-box model's recall, which keeps the sweep cheap.
+    for v in variants(CBCR):
+        assert [dict(t) for t in cbcr(v).models.targets] == SURROGATE_ONLY, v
+
+
+def test_rgb8_is_pgd_in_rgb_at_8():
+    a = cbcr("rgb8").attack
+    assert (a.method, a.space, a.eps.rgb) == ("pgd", "rgb", 8)
+
+
+def test_cb_variants_are_pgd_in_ycbcr_with_y2_and_equal_cb_cr():
+    for v, value in [("cb4", 4), ("cb8", 8), ("cb12", 12)]:
+        a = cbcr(v).attack
+        assert (a.method, a.space) == ("pgd", "ycbcr"), v
+        assert (a.eps.y, a.eps.cb, a.eps.cr) == (2, value, value), v
+
+
+def test_random8_is_the_noise_control_at_the_rgb8_budget():
+    a = cbcr("random8").attack
+    assert (a.method, a.space, a.eps.rgb) == ("random", "rgb", 8)
+
+
+def test_variants_change_only_the_attack_budget_space_and_method():
+    allowed = {
+        "models.targets",
+        "attack.method",
+        "attack.space",
+        "attack.eps.rgb",
+        "attack.eps.y",
+        "attack.eps.cb",
+        "attack.eps.cr",
+    }
+    for v in variants(CBCR):
+        assert changed_keys(cbcr(v)) <= allowed, (v, changed_keys(cbcr(v)) - allowed)
+
+
+def test_one_factor_between_neighbouring_variants():
+    def diff(a, b):
+        fa, fb = _flatten(cbcr(a)), _flatten(cbcr(b))
+        return {k for k in fa if fa[k] != fb[k]}
+
+    assert diff("cb4", "cb8") == diff("cb8", "cb12") == {"attack.eps.cb", "attack.eps.cr"}
+    assert diff("rgb8", "random8") == {"attack.method"}
+
+
+def test_every_variant_sets_its_own_budget_instead_of_inheriting_base():
+    # Task 12 later writes the chosen Cb/Cr into base.yaml. A variant that relied on base's value
+    # would then silently change, and rerunning the sweep would no longer reproduce it.
+    raw = yaml.safe_load(CBCR.read_text())
+    shared = raw.get("overrides") or {}
+    for v, settings in raw["variants"].items():
+        keys = {**shared, **(settings or {})}
+        needed = {"attack.method", "attack.space"}
+        needed |= {"attack.eps.rgb"} if keys.get("attack.space") == "rgb" else set()
+        if keys.get("attack.space") == "ycbcr":
+            needed |= {"attack.eps.y", "attack.eps.cb", "attack.eps.cr"}
+        assert needed <= keys.keys(), (v, needed - keys.keys())

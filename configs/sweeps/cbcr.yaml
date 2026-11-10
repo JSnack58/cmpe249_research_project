@@ -1,0 +1,20 @@
+# Cb/Cr budget sweep (Task 12): picks the main YCbCr budget by a rule fixed in advance.
+# Main Cb/Cr = the smallest value whose attacked YOLOv8s recall is within 0.05 of rgb8's;
+# if none qualifies, add cb16, then cb20. random8 is the control: the same budget as rgb8 with
+# random signs, so a gap between them comes from PGD's choice of direction, not the noise size.
+# Every variant sets its own method, space and budget, so later changes to base.yaml (such as
+# writing in the chosen Cb/Cr) cannot change what these runs mean.
+#
+#   ./run_ablations.sh configs/sweeps/cbcr.yaml
+
+id: cbcr
+
+overrides:
+  models.targets: [{name: yolov8s, seed: 0}]  # the rule only needs the white-box surrogate
+
+variants:
+  rgb8:    {attack.method: pgd,    attack.space: rgb,   attack.eps.rgb: 8}
+  cb4:     {attack.method: pgd,    attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 4,  attack.eps.cr: 4}
+  cb8:     {attack.method: pgd,    attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 8,  attack.eps.cr: 8}
+  cb12:    {attack.method: pgd,    attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 12, attack.eps.cr: 12}
+  random8: {attack.method: random, attack.space: rgb,   attack.eps.rgb: 8}
