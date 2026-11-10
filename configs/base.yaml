@@ -9,7 +9,8 @@ device: cuda:0            # GPU for attack and evaluation (fine-tuning takes --d
 
 data:
   root: data/openimages_plates
-  eligible_list: splits/openimages_test_eligible.txt   # frozen by prepare-data, committed
+  split: test             # test = reported results; val = attack development (milestone 2)
+  eligible_list: splits/openimages_${data.split}_eligible.txt   # frozen by prepare-data, committed
   imgsz: 640              # long side of every image the models see
   min_plate_w: 40         # a plate counts for evaluation if at least this wide...
   min_plate_h: 11         # ...and this tall at the 640 input (11 = the SSIM window)

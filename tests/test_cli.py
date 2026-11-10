@@ -9,7 +9,9 @@ def test_prepare_data_uses_config_overrides(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         "plate_cloak.data.eval_images.write_eligible_list",
-        lambda root, out, imgsz, min_w, min_h: seen.update(out=out, min_h=min_h) or 7,
+        lambda root, out, imgsz, min_w, min_h, split: (
+            seen.update(out=out, min_h=min_h, split=split) or 7
+        ),
     )
     out = tmp_path / "eligible.txt"
     code = cli.main(
@@ -17,6 +19,7 @@ def test_prepare_data_uses_config_overrides(monkeypatch, tmp_path):
     )
     assert code == 0
     assert seen["workers"] == 4 and seen["out"] == out and seen["min_h"] == 12
+    assert seen["split"] == "test"
 
 
 def test_finetune_passes_config_and_flags(monkeypatch):

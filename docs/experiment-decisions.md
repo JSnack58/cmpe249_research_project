@@ -29,6 +29,7 @@ Each entry notes where it came from.
 - **Dataset as prepared (2026-10-28, Task 3).**
   Open Images plates: 5,368 train, 724 validation, 2,065 test images (the 3 test images missing in Spike 02 downloaded this time).
   Eligible test images (a plate at least 40 px wide and 11 px tall at the 640 input): 1,731, frozen in `splits/openimages_test_eligible.txt`.
+  Eligible validation images by the same rule (2026-11-10, for attack development in milestone 2): 604 of 724, frozen in `splits/openimages_val_eligible.txt`; no image is in both lists.
 - **No image rotation handling needed for Open Images.**
   None of the 8,154 downloaded images carries an EXIF orientation tag, and Open Images' rotation metadata is 0 (or empty) for every val/test image we use.
   The loader still applies `exif_transpose`, which is a no-op here but protects other image sources.

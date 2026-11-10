@@ -14,7 +14,8 @@ from plate_cloak.config import BASE_CONFIG, load_config, resolve_path
 
 
 def prepare_data(args: argparse.Namespace) -> int:
-    """Download the dataset (skipping files already present) and freeze the eligible test list."""
+    """Download the dataset (skipping files already present) and freeze the eligible list of
+    `data.split` (run once per split: `prepare-data data.split=val`)."""
     from plate_cloak.data.eval_images import write_eligible_list
     from plate_cloak.data.openimages import prepare_openimages
 
@@ -27,8 +28,9 @@ def prepare_data(args: argparse.Namespace) -> int:
         cfg.data.imgsz,
         cfg.data.min_plate_w,
         cfg.data.min_plate_h,
+        split=cfg.data.split,
     )
-    print(f"eligible test images: {n} -> {cfg.data.eligible_list}")
+    print(f"eligible {cfg.data.split} images: {n} -> {cfg.data.eligible_list}")
     return 0
 
 

@@ -1,7 +1,8 @@
 """Evaluation images: the exact pictures and plate boxes every model is scored on.
 
-Each test image is resized so its long side is `imgsz` (640). That resized image is what gets
-attacked, and both its clean and attacked versions are what every target model is shown.
+Each image is resized so its long side is `imgsz` (640). That resized image is what gets attacked,
+and both its clean and attacked versions are what every target model is shown. Images come from
+`data.split`: the test split for reported results, the validation split for attack development.
 Plates smaller than min_w x min_h at that size are kept as "ignore" regions: too small to read,
 so a detection on one counts as neither a hit nor a false positive.
 An image is eligible for evaluation if it has at least one plate that is not ignored.
@@ -53,14 +54,23 @@ def is_eligible(ev: EvalImage) -> bool:
     return bool((~ev.ignore).any())
 
 
+SPLITS = ("test", "val")  # val: attack development; test: the reported results
+
+
 def write_eligible_list(
-    data_root: Path, out_path: Path, imgsz: int, min_w: float, min_h: float
+    data_root: Path,
+    out_path: Path,
+    imgsz: int,
+    min_w: float,
+    min_h: float,
+    split: str = "test",
 ) -> int:
-    """Freeze the sorted IDs of eligible test images to out_path; return how many there are."""
+    """Freeze the sorted IDs of a split's eligible images to out_path; return how many there are."""
+    _check_split(split)
     data_root = Path(data_root)
     eligible = []
-    for image_path in sorted((data_root / "images" / "test").glob("*.jpg")):
-        label_path = data_root / "labels" / "test" / f"{image_path.stem}.txt"
+    for image_path in sorted((data_root / "images" / split).glob("*.jpg")):
+        label_path = data_root / "labels" / split / f"{image_path.stem}.txt"
         if is_eligible(load_eval_image(image_path, label_path, imgsz, min_w, min_h)):
             eligible.append(image_path.stem)
     out_path = Path(out_path)
@@ -78,12 +88,19 @@ def eval_image_ids(cfg: DictConfig) -> list[str]:
 
 
 def load_by_id(cfg: DictConfig, image_id: str) -> EvalImage:
-    """Load one test image by ID using the config's data settings."""
+    """Load one image of the configured split (data.split) by ID."""
+    split = _check_split(cfg.data.split)
     root = resolve_path(cfg.data.root)
     return load_eval_image(
-        root / "images" / "test" / f"{image_id}.jpg",
-        root / "labels" / "test" / f"{image_id}.txt",
+        root / "images" / split / f"{image_id}.jpg",
+        root / "labels" / split / f"{image_id}.txt",
         cfg.data.imgsz,
         cfg.data.min_plate_w,
         cfg.data.min_plate_h,
     )
+
+
+def _check_split(split: str) -> str:
+    if split not in SPLITS:
+        raise ValueError(f"unknown data split {split!r}; options: {', '.join(SPLITS)}")
+    return split

@@ -7,6 +7,7 @@ from plate_cloak.config import BASE_CONFIG, load_config
 from plate_cloak.data.eval_images import (
     eval_image_ids,
     is_eligible,
+    load_by_id,
     load_eval_image,
     write_eligible_list,
 )
@@ -122,3 +123,38 @@ def test_eval_ids_subsample_is_deterministic_and_sorted(cfg_with_list):
     first = eval_image_ids(cfg)
     assert first == eval_image_ids(cfg) and len(first) == 10
     assert first == sorted(first) and set(first) <= set(ids)
+
+
+def _split_fixture(root, split, image_ids):
+    (root / f"images/{split}").mkdir(parents=True, exist_ok=True)
+    (root / f"labels/{split}").mkdir(parents=True, exist_ok=True)
+    for image_id in image_ids:
+        make_image(root / f"images/{split}/{image_id}.jpg", (640, 480))
+        make_label(root / f"labels/{split}/{image_id}.txt", [(0.5, 0.5, 0.2, 0.1)])
+
+
+def test_eligible_list_for_the_val_split(tmp_path):
+    root = tmp_path / "ds"
+    _split_fixture(root, "val", ["v1", "v2"])
+    _split_fixture(root, "test", ["t1"])
+    out = tmp_path / "eligible_val.txt"
+    assert write_eligible_list(root, out, **SIZE, split="val") == 2
+    assert out.read_text().split() == ["v1", "v2"]
+
+
+def test_unknown_split_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="test, val"):
+        write_eligible_list(tmp_path, tmp_path / "x.txt", **SIZE, split="train")
+
+
+def test_load_by_id_reads_the_configured_split(tmp_path):
+    root = tmp_path / "ds"
+    _split_fixture(root, "val", ["v1"])
+    cfg = load_config(BASE_CONFIG, [f"data.root={root}", "data.split=val"])
+    assert load_by_id(cfg, "v1").image_id == "v1"
+
+
+def test_eligible_list_follows_the_split():
+    assert load_config(BASE_CONFIG).data.eligible_list == "splits/openimages_test_eligible.txt"
+    cfg = load_config(BASE_CONFIG, ["data.split=val"])
+    assert cfg.data.eligible_list == "splits/openimages_val_eligible.txt"
