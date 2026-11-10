@@ -32,7 +32,7 @@ from PIL import Image
 
 from plate_cloak.attack.stage import fingerprint
 from plate_cloak.data.eval_images import eval_image_ids, load_by_id
-from plate_cloak.evaluation.detection import average_precision, recall
+from plate_cloak.evaluation.detection import Pooled
 from plate_cloak.evaluation.matching import ImageMatch, match_image
 from plate_cloak.evaluation.stats import bootstrap_ci
 from plate_cloak.runs import check_run_name, create_run_dir, provenance, write_resolved_config
@@ -134,22 +134,17 @@ def evaluate(cfg: DictConfig, adv_dir: Path, run_dir: Path | None = None) -> dic
 
 def _target_metrics(clean: list[ImageMatch], attacked: list[ImageMatch], cfg: DictConfig) -> dict:
     """mAP50 and recall50 per condition, and clean minus attacked, as bootstrap CIs."""
+    c, a = Pooled(clean), Pooled(attacked)
 
     def ci(statistic):
         b = cfg.eval.bootstrap
         return bootstrap_ci(len(clean), statistic, b.n, b.ci, cfg.seed).as_dict()
 
     return {
-        "clean": {
-            "map50": ci(lambda w: average_precision(clean, w)),
-            "recall50": ci(lambda w: recall(clean, w)),
-        },
-        "attacked": {
-            "map50": ci(lambda w: average_precision(attacked, w)),
-            "recall50": ci(lambda w: recall(attacked, w)),
-        },
-        "drop_map50": ci(lambda w: average_precision(clean, w) - average_precision(attacked, w)),
-        "drop_recall50": ci(lambda w: recall(clean, w) - recall(attacked, w)),
+        "clean": {"map50": ci(c.ap), "recall50": ci(c.recall)},
+        "attacked": {"map50": ci(a.ap), "recall50": ci(a.recall)},
+        "drop_map50": ci(lambda w: c.ap(w) - a.ap(w)),
+        "drop_recall50": ci(lambda w: c.recall(w) - a.recall(w)),
     }
 
 
