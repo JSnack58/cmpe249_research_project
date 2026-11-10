@@ -1,0 +1,61 @@
+seed: 42
+device: cuda:0
+data:
+  root: data/openimages_plates
+  eligible_list: splits/openimages_test_eligible.txt
+  imgsz: 640
+  min_plate_w: 40
+  min_plate_h: 11
+  n_eval: null
+models:
+  surrogate:
+    name: yolov8s
+    seed: 0
+  targets:
+  - name: yolov8s
+    seed: 0
+  - name: yolov8s
+    seed: 1
+  - name: yolov8s
+    seed: 2
+  - name: yolov10l
+    seed: 0
+  - name: yolov10l
+    seed: 1
+  - name: yolov10l
+    seed: 2
+  - name: rtdetr-l
+    seed: 0
+  - name: rtdetr-l
+    seed: 1
+  - name: rtdetr-l
+    seed: 2
+  epochs: 100
+  batch: 16
+  workers: 8
+attack:
+  method: pgd
+  space: ycbcr
+  eps:
+    rgb: 8
+    'y': 2
+    cb: 8
+    cr: 8
+  steps: 40
+  step_factor: 2.5
+  margin: 0.1
+  mask: uniform
+  loss:
+    type: topk
+    k: 100
+    floor: 0.1
+  quant_margin: 0.5
+eval:
+  conf: 0.25
+  iou: 0.5
+  bootstrap:
+    'n': 1000
+    ci: 0.95
+output:
+  runs_root: results/runs
+  cache_root: cache/adv
