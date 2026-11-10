@@ -98,3 +98,26 @@ def test_loss_sweep_pairs_each_loss_with_the_rgb8_and_cb8_attacks():
         assert {k for k in ft if ft[k] != ref[k]} <= {"attack.loss.type"}
     for v in variants(LOSS):
         assert [dict(t) for t in load_config(LOSS, variant=v).models.targets] == SURROGATE_ONLY
+
+
+EPS = CONFIG_DIR / "sweeps" / "eps.yaml"
+
+
+def test_eps_sweep_only_raises_the_rgb_budget_and_keeps_every_target():
+    assert variants(EPS) == ["rgb8", "rgb16", "rgb32"]
+    base = load_config(BASE_CONFIG)
+    for v, value in [("rgb8", 8), ("rgb16", 16), ("rgb32", 32)]:
+        cfg = load_config(EPS, variant=v)
+        assert (cfg.attack.method, cfg.attack.space, cfg.attack.eps.rgb) == ("pgd", "rgb", value)
+        assert cfg.models.targets == base.models.targets, v  # transfer needs every target
+        assert changed_keys(cfg) <= {"attack.space", "attack.eps.rgb"}, v
+
+
+def test_eps_rgb8_is_the_milestone_1_rgb_attack():
+    # Same attack settings as the m1 RGB run (base.yaml with space=rgb), so it reuses that cache.
+    from plate_cloak.attack.stage import fingerprint
+
+    m1 = load_config(BASE_CONFIG, overrides=["attack.space=rgb"])
+    eps8 = load_config(EPS, variant="rgb8")
+    ids = ["a", "b"]  # the fingerprint also covers the image ids; a fixed list compares settings
+    assert fingerprint(m1, ids) == fingerprint(eps8, ids)

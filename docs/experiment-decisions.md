@@ -106,6 +106,26 @@ Each entry notes where it came from.
   Ultralytics' predict() pads a 640-wide image to a multiple of 32 centered (a 427-row image gets 10 rows on top, 11 at the bottom) with gray 114.
   Spike 01 padded at the bottom and right only, so its surrogate saw a slightly different layout during the attack than at evaluation.
   PGD now pads exactly like predict(), and a test checks it against Ultralytics' own LetterBox.
+- **Milestone 1 H1 result: not supported, and not really tested (2026-11-10, Task 13).**
+  All 1,731 eligible test images, 3 seeds per model, PGD on YOLOv8s seed 0 (top-k, 40 steps); runs `results/runs/m1_h1_main` (YCbCr 2, 12, 12) and `m1_h1_rgb` (RGB 8), report `results/reports/m1/`.
+
+  | Target | Clean mAP@0.5 | Drop, YCbCr (2, 12, 12) | Drop, RGB 8 |
+  |---|---|---|---|
+  | YOLOv8s seed 0 (white-box) | 0.968 | 0.896 [0.879, 0.909] | 0.857 [0.836, 0.870] |
+  | YOLOv8s seeds 1-2 (retrained) | 0.966 | 0.065 [0.056, 0.075] | 0.068 [0.058, 0.078] |
+  | YOLOv10l (CNN control) | 0.966 | 0.035 [0.029, 0.041] | 0.034 [0.029, 0.041] |
+  | RT-DETR-L (Transformer) | 0.983 | 0.001 [-0.001, 0.003] | 0.009 [0.006, 0.012] |
+
+  H1 difference, drop(YOLOv10l) minus drop(RT-DETR-L): 0.034 [0.028, 0.040] for YCbCr and 0.026 [0.020, 0.032] for RGB, far below the 0.35 threshold.
+  Attack success on the 1,669 plates every target found when clean (YCbCr): white-box 94%, retrained 9%, YOLOv10l 4%, RT-DETR 0.2%.
+  Reading: the attack overfits its one surrogate and barely transfers even to the same architecture retrained.
+  With the CNN control losing only 0.035, a 0.35 gap was impossible by construction, so this run did not really test H1.
+  RT-DETR is affected slightly less than YOLOv10l (a real but small gap), and RGB behaves like YCbCr, so the color space is not the reason.
+  Next: a transfer attack, designed in [the transfer attack spec](superpowers/specs/2026-11-10-transfer-attack-design.md).
+- **GPU PGD is not bit-for-bit deterministic (2026-11-10).**
+  Two caches of the same RGB 8 attack (`eeaeb03f3a41` and `39d655a3e07b`; the fingerprint changed only because base.yaml's Cb/Cr, which an RGB attack never uses, went from 8 to 12) differ in 123 of 1,731 images, by up to 16/255 on about 3% of a plate's pixels.
+  Cause: cuDNN's backward pass is not deterministic, and PGD steps along `sign(gradient)`, so a tiny difference flips a pixel's step.
+  The effect on metrics is negligible; the code's docstrings no longer claim the attack is deterministic on GPU.
 
 ## Open
 

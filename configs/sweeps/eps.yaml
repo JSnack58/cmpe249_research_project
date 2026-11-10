@@ -1,0 +1,17 @@
+# Budget diagnostic (after milestone 1): is a bigger budget the lever for transfer?
+# Milestone 1's attack hid plates from the surrogate (YOLOv8s seed 0) but barely moved any other
+# model. This sweep raises the RGB budget and shows the attacks to every target, to see whether
+# the transfer drop (YOLOv10l above all, the CNN control) grows with the budget or stays flat.
+# 32/255 is clearly visible: this is a diagnostic, not a candidate cloak.
+# rgb8 is milestone 1's RGB attack, so it reuses that attack cache and only re-runs evaluation.
+# Every variant sets its own method, space and budget, so changes to base.yaml cannot change
+# what these runs mean.
+#
+#   ./run_ablations.sh configs/sweeps/eps.yaml
+
+id: eps
+
+variants:
+  rgb8:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 8}
+  rgb16: {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 16}
+  rgb32: {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 32}
