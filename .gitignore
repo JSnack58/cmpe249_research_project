@@ -28,6 +28,7 @@ results/runs/**/images/
 results/runs/**/saliency/
 results/runs/**/*.npy
 results/runs/**/*.npz
+results/eyetest/*/crops/
 
 # Ultralytics default output dir
 /runs/

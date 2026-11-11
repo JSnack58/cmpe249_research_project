@@ -99,6 +99,15 @@ def report(args: argparse.Namespace) -> int:
     return 0
 
 
+def visibility(args: argparse.Namespace) -> int:
+    """LPIPS between clean and attacked plate crops for one attack (its cache must exist)."""
+    from plate_cloak.visibility.lpips_stage import run_visibility
+
+    cfg = load_config(args.config, args.overrides, variant=args.variant)
+    run_visibility(cfg, args.name, args.out)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments and dispatch to the chosen stage.
 
@@ -153,6 +162,13 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--runs", type=Path, nargs="+", required=True, help="run folders")
     p_report.add_argument("--out", type=Path, required=True, help="folder for the report files")
     p_report.set_defaults(func=report)
+
+    p_vis = sub.add_parser("visibility", help="LPIPS of each attacked plate crop vs. the clean one")
+    _add_config_args(p_vis)
+    _add_variant_arg(p_vis)
+    p_vis.add_argument("--name", required=True, help="output folder name")
+    p_vis.add_argument("--out", type=Path, help="parent folder (default: results/visibility)")
+    p_vis.set_defaults(func=visibility)
 
     args = parser.parse_args(argv)
     return args.func(args)  # run the chosen stage; its return value becomes the exit code

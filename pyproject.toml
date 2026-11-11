@@ -37,4 +37,6 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not slow'"  # run the slow ones with: pytest -m slow
+markers = ["slow: needs downloaded model weights (LPIPS); run on demand with -m slow"]
 
