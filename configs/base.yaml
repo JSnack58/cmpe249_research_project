@@ -17,7 +17,8 @@ data:
   n_eval: null            # null = every eligible test image; an int subsamples for quick runs
 
 models:
-  surrogate: {name: yolov8s, seed: 0}   # the model PGD attacks (white-box)
+  surrogates:             # the models PGD attacks (white-box); several = an ensemble (milestone 2)
+    - {name: yolov8s, seed: 0}
   targets:                # every model the attacked images are shown to
     - {name: yolov8s, seed: 0}     # the surrogate itself (white-box reference)
     - {name: yolov8s, seed: 1}     # same architecture, retrained: transfer from retraining alone

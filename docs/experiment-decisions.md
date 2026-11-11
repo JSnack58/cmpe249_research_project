@@ -123,6 +123,8 @@ Each entry notes where it came from.
   With the CNN control losing only 0.035, a 0.35 gap was impossible by construction, so this run did not really test H1.
   RT-DETR is affected slightly less than YOLOv10l (a real but small gap), and RGB behaves like YCbCr, so the color space is not the reason.
   Next: a transfer attack, designed in [the transfer attack spec](superpowers/specs/2026-11-10-transfer-attack-design.md).
+  Milestone 2 replaced `models.surrogate` with a `surrogates` list and changed how attack caches are fingerprinted, so these runs' `config.yaml` no longer loads with `--config`: reproduce them from commit `50c594b`, the commit their provenance records.
+  With every transfer switch off, the milestone 2 code makes exactly the same images as this run (checked on 3 test images).
 - **GPU PGD is not bit-for-bit deterministic (2026-11-10).**
   Two caches of the same RGB 8 attack (`eeaeb03f3a41` and `39d655a3e07b`; the fingerprint changed only because base.yaml's Cb/Cr, which an RGB attack never uses, went from 8 to 12) differ in 123 of 1,731 images, by up to 16/255 on about 3% of a plate's pixels.
   Cause: cuDNN's backward pass is not deterministic, and PGD steps along `sign(gradient)`, so a tiny difference flips a pixel's step.

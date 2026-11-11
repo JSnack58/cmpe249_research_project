@@ -326,8 +326,8 @@ def test_cli_refuses_an_existing_run_before_doing_any_work(tmp_path, detectors):
 
 
 def test_cli_run_attacks_then_evaluates(tmp_path, detectors, monkeypatch):
-    monkeypatch.setattr(attack_stage, "load_surrogate", lambda cfg: TinyDetector())
-    monkeypatch.setattr(attack_stage, "weights_digest", lambda cfg: "weights-v1")
+    monkeypatch.setattr(attack_stage, "load_surrogates", lambda cfg: [TinyDetector()])
+    monkeypatch.setattr(attack_stage, "weights_digests", lambda cfg: {"yolov8s_s0": "weights-v1"})
     cfg = tiny_cfg(tmp_path)
     assert cli.main(["run", "--name", "r1", *_tiny_overrides(cfg), "attack.steps=2"]) == 0
     m = json.loads((tmp_path / "runs" / "r1" / "metrics.json").read_text())

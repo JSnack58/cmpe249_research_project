@@ -95,7 +95,10 @@ def load_run(run_dir: Path) -> Run:
 
 def architecture_rows(cfg: DictConfig) -> dict[str, list[tuple[str, int]]]:
     """Row label -> its targets: white-box surrogate, retrained surrogate, then the others."""
-    surrogate = (cfg.models.surrogate.name, cfg.models.surrogate.seed)
+    # Milestone 1 run configs name one `surrogate`; later ones a `surrogates` list (Task 6 of
+    # milestone 2a gives every ensemble member its own row).
+    first = cfg.models.surrogates[0] if "surrogates" in cfg.models else cfg.models.surrogate
+    surrogate = (first.name, first.seed)
     targets = [(t.name, t.seed) for t in cfg.models.targets]
     rows = {}
     if surrogate in targets:

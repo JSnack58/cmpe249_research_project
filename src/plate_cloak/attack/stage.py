@@ -5,14 +5,17 @@
 Output: cache/adv/<fingerprint>/ holding
     <image_id>.png   attacked image, 8-bit RGB, same size as the EvalImage
     audit.csv        largest actual change per channel for each image, in 1/255 units
-    settings.yaml    what made this cache: attack settings, surrogate and its weights' SHA-256,
+    settings.yaml    what made this cache: attack settings, surrogates and their weights' SHA-256,
                      image count, code version
     done.json        written last; its presence means the cache is complete
 
-The fingerprint covers every setting that changes the attacked pixels (and nothing that only
-changes evaluation), so a cache is reused exactly when it would come out the same.
+The fingerprint covers every setting that changes the attacked pixels, and nothing else (not
+evaluation settings, not budgets the chosen color space never uses), so a cache is reused exactly
+when it would come out the same.
 Each PNG is written to a temporary name and renamed, so a crash never leaves a cut-off image;
-an interrupted run picks up where it stopped because the attack is deterministic per image.
+an interrupted run picks up where it stopped. Each image depends only on its own id (random draws
+are seeded per image), though on GPU a redone image can differ in a few pixels because cuDNN's
+backward pass is not deterministic (see experiment-decisions.md).
 """
 
 from __future__ import annotations
@@ -41,8 +44,9 @@ AUDIT_COLUMNS = ["image_id", "R", "G", "B", "Y", "Cb", "Cr"]
 def fingerprint(cfg: DictConfig, image_ids: list[str]) -> str:
     """First 12 hex characters of a SHA-256 over everything that shapes the attacked pixels."""
     relevant = {
-        "attack": OmegaConf.to_container(cfg.attack, resolve=True),
-        "surrogate": OmegaConf.to_container(cfg.models.surrogate, resolve=True),
+        "attack": attack_settings(cfg.attack),
+        "surrogates": [_name_seed(m) for m in cfg.models.surrogates],
+        "split": cfg.data.split,
         "imgsz": cfg.data.imgsz,
         "min_plate_w": cfg.data.min_plate_w,
         "min_plate_h": cfg.data.min_plate_h,
@@ -53,20 +57,43 @@ def fingerprint(cfg: DictConfig, image_ids: list[str]) -> str:
     return hashlib.sha256(blob).hexdigest()[:12]
 
 
+def attack_settings(attack: DictConfig) -> dict:
+    """The attack block reduced to the settings this attack actually uses.
+
+    Budgets of the other color space, the hinge floor of a top-k attack and so on are left out,
+    so changing them does not invalidate a cache they never affected.
+    """
+    a = OmegaConf.to_container(attack, resolve=True)
+    eps = (
+        {"rgb": a["eps"]["rgb"]}
+        if a["space"] == "rgb"
+        else {k: a["eps"][k] for k in ("y", "cb", "cr")}
+    )
+    loss = {"type": a["loss"]["type"]}
+    loss.update({"k": a["loss"]["k"]} if loss["type"] == "topk" else {"floor": a["loss"]["floor"]})
+    out = {k: a[k] for k in ("method", "space", "steps", "step_factor", "margin", "mask")}
+    out.update(eps=eps, loss=loss, momentum=a["momentum"])
+    if a["space"] == "ycbcr":
+        out["quant_margin"] = a["quant_margin"]
+    if a["diversity"]["p"] > 0:
+        out["diversity"] = dict(a["diversity"])
+    return out
+
+
 def run_attack(cfg: DictConfig) -> Path:
     """Attack every evaluation image (or reuse a finished cache) and return the cache folder."""
     ids = eval_image_ids(cfg)
     out = resolve_path(cfg.output.cache_root) / fingerprint(cfg, ids)
-    digest = weights_digest(cfg)
+    digests = weights_digests(cfg)
     if (out / "done.json").exists():
-        _check_same_weights(out, digest)
+        _check_same_weights(out, digests)
         print(f"attack: reusing finished cache {out}")
         return out
 
     out.mkdir(parents=True, exist_ok=True)
     s = AttackSettings.from_cfg(cfg.attack)
     device = torch.device(cfg.device)
-    net = load_surrogate(cfg).to(device)
+    nets = [net.to(device) for net in load_surrogates(cfg)]
     rows = []
     bar = Progress(len(ids), "attack")
     for image_id in ids:
@@ -76,7 +103,7 @@ def run_attack(cfg: DictConfig) -> Path:
         if png.exists():  # finished before an interruption
             adv = np.array(Image.open(png).convert("RGB"))
         else:
-            adv = _attack_one(net, clean, ev.boxes, s, cfg.seed, image_id, device)
+            adv = _attack_one(nets, clean, ev.boxes, s, cfg.seed, image_id, device)
             _save_png(adv, png)
         rows.append({"image_id": image_id, **audit(clean, adv)})
         bar.update()
@@ -87,8 +114,10 @@ def run_attack(cfg: DictConfig) -> Path:
     settings = {
         "fingerprint": out.name,
         "attack": OmegaConf.to_container(cfg.attack, resolve=True),
-        "surrogate": {**OmegaConf.to_container(cfg.models.surrogate), "weights_sha256": digest},
-        "data": {k: cfg.data[k] for k in ("imgsz", "min_plate_w", "min_plate_h")},
+        "surrogates": [
+            {**_name_seed(m), "weights_sha256": digests[_key(m)]} for m in cfg.models.surrogates
+        ],
+        "data": {k: cfg.data[k] for k in ("split", "imgsz", "min_plate_w", "min_plate_h")},
         "seed": cfg.seed,
         "n_images": len(ids),
         "provenance": provenance(),
@@ -99,23 +128,36 @@ def run_attack(cfg: DictConfig) -> Path:
     return out
 
 
-def load_surrogate(cfg: DictConfig) -> torch.nn.Module:
-    """The surrogate's raw network: eval mode, float32, weights frozen."""
+def load_surrogates(cfg: DictConfig) -> list[torch.nn.Module]:
+    """Each surrogate's raw network: eval mode, float32, weights frozen."""
     from plate_cloak.models.zoo import load_detector
 
-    net = load_detector(cfg.models.surrogate.name, cfg.models.surrogate.seed).model
-    net = net.float().eval()
-    for p in net.parameters():
-        p.requires_grad_(False)  # PGD only needs gradients for the pixels
-    return net
+    nets = []
+    for m in cfg.models.surrogates:
+        net = load_detector(m.name, m.seed).model.float().eval()
+        for p in net.parameters():
+            p.requires_grad_(False)  # PGD only needs gradients for the pixels
+        nets.append(net)
+    return nets
 
 
-def weights_digest(cfg: DictConfig) -> str:
-    """SHA-256 of the surrogate's weights file, so a retrained model can't reuse an old cache."""
+def weights_digests(cfg: DictConfig) -> dict[str, str]:
+    """SHA-256 of each surrogate's weights file, keyed "<name>_s<seed>", so a retrained model
+    can't reuse an old cache."""
     from plate_cloak.models.zoo import weights_path
 
-    path = weights_path(cfg.models.surrogate.name, cfg.models.surrogate.seed)
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return {
+        _key(m): hashlib.sha256(weights_path(m.name, m.seed).read_bytes()).hexdigest()
+        for m in cfg.models.surrogates
+    }
+
+
+def _name_seed(m) -> dict:
+    return {"name": m.name, "seed": int(m.seed)}
+
+
+def _key(m) -> str:
+    return f"{m.name}_s{m.seed}"
 
 
 def image_seed(seed: int, image_id: str) -> int:
@@ -123,10 +165,13 @@ def image_seed(seed: int, image_id: str) -> int:
     return int.from_bytes(hashlib.sha256(f"{seed}:{image_id}".encode()).digest()[:8], "big")
 
 
-def _attack_one(net, clean_u8, boxes, s: AttackSettings, seed, image_id, device) -> np.ndarray:
+def _attack_one(nets, clean_u8, boxes, s: AttackSettings, seed, image_id, device) -> np.ndarray:
     x = torch.from_numpy(clean_u8).permute(2, 0, 1)[None].float().div(255).to(device)
     if s.method == "pgd":
-        adv = pgd([net], x, boxes, s)
+        # Input diversity draws on the CPU from a per-image seed, so the order never matters.
+        adv = pgd(
+            nets, x, boxes, s, generator=torch.Generator().manual_seed(image_seed(seed, image_id))
+        )
     elif s.method == "random":
         generator = torch.Generator(device=device).manual_seed(image_seed(seed, image_id))
         adv = random_sign_noise(x, boxes, s, generator)
@@ -152,12 +197,16 @@ def _check_budget(worst: dict[str, float], attack: DictConfig) -> None:
         raise RuntimeError(f"saved images exceed the budget {limits}: {over}")
 
 
-def _check_same_weights(out: Path, digest: str) -> None:
-    recorded = yaml.safe_load((out / "settings.yaml").read_text())["surrogate"]["weights_sha256"]
-    if recorded != digest:
+def _check_same_weights(out: Path, digests: dict[str, str]) -> None:
+    recorded = {
+        f"{m['name']}_s{m['seed']}": m["weights_sha256"]
+        for m in yaml.safe_load((out / "settings.yaml").read_text())["surrogates"]
+    }
+    changed = sorted(k for k in digests if recorded.get(k) != digests[k])
+    if changed:
         raise RuntimeError(
-            f"{out} was made with different surrogate weights (sha256 {recorded[:12]}..., now "
-            f"{digest[:12]}...). Move that folder aside and rerun the attack."
+            f"{out} was made with different surrogate weights ({', '.join(changed)} changed). "
+            "Move that folder aside and rerun the attack."
         )
 
 

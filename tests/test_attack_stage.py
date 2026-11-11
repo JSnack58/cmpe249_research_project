@@ -50,8 +50,8 @@ def fake_surrogate(monkeypatch):
         return real_pgd(*args, **kwargs)
 
     monkeypatch.setattr(stage, "pgd", counting_pgd)
-    monkeypatch.setattr(stage, "load_surrogate", lambda cfg: TinyDetector())
-    monkeypatch.setattr(stage, "weights_digest", lambda cfg: calls["digest"])
+    monkeypatch.setattr(stage, "load_surrogates", lambda cfg: [TinyDetector()])
+    monkeypatch.setattr(stage, "weights_digests", lambda cfg: {"yolov8s_s0": calls["digest"]})
     return calls
 
 
@@ -63,7 +63,8 @@ def test_fingerprint_changes_with_attack_settings_and_images():
     f = fingerprint(base, ["a", "b"])
     assert fingerprint(load_config(BASE_CONFIG, ["attack.eps.cb=4"]), ["a", "b"]) != f
     assert fingerprint(load_config(BASE_CONFIG, ["attack.loss.type=hinge"]), ["a", "b"]) != f
-    assert fingerprint(load_config(BASE_CONFIG, ["models.surrogate.seed=1"]), ["a", "b"]) != f
+    other = "models.surrogates=[{name: yolov8s, seed: 1}]"
+    assert fingerprint(load_config(BASE_CONFIG, [other]), ["a", "b"]) != f
     assert fingerprint(load_config(BASE_CONFIG, ["data.imgsz=320"]), ["a", "b"]) != f
     assert fingerprint(load_config(BASE_CONFIG, ["seed=7"]), ["a", "b"]) != f
     assert fingerprint(base, ["a"]) != f
@@ -74,6 +75,31 @@ def test_fingerprint_ignores_eval_and_output_settings():
     f = fingerprint(load_config(BASE_CONFIG), ["a"])
     for override in ["eval.conf=0.5", "eval.bootstrap.n=10", "output.runs_root=x", "device=cpu"]:
         assert fingerprint(load_config(BASE_CONFIG, [override]), ["a"]) == f, override
+
+
+def fp(*overrides):
+    return fingerprint(load_config(BASE_CONFIG, list(overrides)), ["a", "b"])
+
+
+def test_fingerprint_ignores_budgets_the_space_does_not_use():
+    # An RGB attack never reads Cb/Cr, so changing them must not invalidate its cache.
+    assert fp("attack.space=rgb") == fp("attack.space=rgb", "attack.eps.cb=4", "attack.eps.y=1")
+    assert fp("attack.space=rgb") == fp("attack.space=rgb", "attack.quant_margin=0.3")
+    assert fp() == fp("attack.eps.rgb=4")  # base is YCbCr
+    assert fp() != fp("attack.quant_margin=0.3")
+    assert fp() == fp("attack.loss.floor=0.2")  # top-k has no floor
+    assert fp("attack.loss.type=hinge") != fp("attack.loss.type=hinge", "attack.loss.floor=0.2")
+    assert fp("attack.loss.type=hinge") == fp("attack.loss.type=hinge", "attack.loss.k=10")
+
+
+def test_fingerprint_changes_with_surrogates_split_momentum_and_diversity():
+    two = "models.surrogates=[{name: yolov8s, seed: 0}, {name: yolov8n, seed: 0}]"
+    for override in [two, "data.split=val", "attack.momentum=1.0", "attack.diversity.p=0.5"]:
+        assert fp(override) != fp(), override
+    assert fp("attack.diversity.min_scale=0.8") == fp()  # DI is off, so its scale is unused
+    assert fp("attack.diversity.p=0.5", "attack.diversity.min_scale=0.8") != fp(
+        "attack.diversity.p=0.5"
+    )
 
 
 def test_image_seed_depends_on_seed_and_image_only():
@@ -117,10 +143,16 @@ def test_interrupted_cache_is_finished_without_redoing_saved_images(tmp_path, fa
     assert (out / "img_a.png").read_bytes() == saved
 
 
-def test_cache_from_other_weights_is_refused(tmp_path, fake_surrogate):
-    cfg = tiny_cfg(tmp_path)
+def test_cache_from_other_weights_is_refused(tmp_path, fake_surrogate, monkeypatch):
+    cfg = tiny_cfg(
+        tmp_path, "models.surrogates=[{name: yolov8s, seed: 0}, {name: yolov8n, seed: 0}]"
+    )
+    monkeypatch.setattr(stage, "load_surrogates", lambda cfg: [TinyDetector(0), TinyDetector(1)])
+    digests = {"yolov8s_s0": "weights-v1", "yolov8n_s0": "n-v1"}
+    monkeypatch.setattr(stage, "weights_digests", lambda cfg: dict(digests))
     run_attack(cfg)
-    fake_surrogate["digest"] = "weights-v2"  # the surrogate was retrained
+    assert [s["weights_sha256"] for s in _settings(cfg)["surrogates"]] == ["weights-v1", "n-v1"]
+    digests["yolov8n_s0"] = "n-v2"  # one member of the ensemble was retrained
     with pytest.raises(RuntimeError, match="different surrogate weights"):
         run_attack(cfg)
 
@@ -128,7 +160,7 @@ def test_cache_from_other_weights_is_refused(tmp_path, fake_surrogate):
 def test_budget_violation_is_never_marked_done(tmp_path, fake_surrogate, monkeypatch):
     cfg = tiny_cfg(tmp_path)
 
-    def bad_pgd(net, x, boxes, s):
+    def bad_pgd(nets, x, boxes, s, generator=None):
         return (x + 5 / 255).clamp(0, 1)  # moves Y by 5/255 everywhere: over the Y budget of 2
 
     monkeypatch.setattr(stage, "pgd", bad_pgd)
@@ -166,3 +198,18 @@ def test_cli_attack_runs_a_sweep_variant(tmp_path, fake_surrogate, monkeypatch):
     assert cli.main(["attack", "--config", str(sweep), "--variant", "cb4", *overrides]) == 0
     expected = load_config(sweep, overrides, variant="cb4")
     assert (tmp_path / "cache" / fingerprint(expected, IDS) / "done.json").exists()
+
+
+def _settings(cfg):
+    import yaml
+
+    return yaml.safe_load((run_attack(cfg) / "settings.yaml").read_text())
+
+
+def test_diversity_draws_depend_on_the_image_not_the_order(tmp_path, fake_surrogate):
+    # A resumed or subsampled run must redo an image with the same random draws.
+    both = run_attack(tiny_cfg(tmp_path, "attack.diversity.p=0.5"))
+    alone = run_attack(tiny_cfg(tmp_path, "attack.diversity.p=0.5", "data.n_eval=1"))
+    image_id = (alone / "audit.csv").read_text().splitlines()[1].split(",")[0]
+    assert alone != both
+    assert (alone / f"{image_id}.png").read_bytes() == (both / f"{image_id}.png").read_bytes()
