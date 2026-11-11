@@ -129,6 +129,26 @@ Each entry notes where it came from.
   Two caches of the same RGB 8 attack (`eeaeb03f3a41` and `39d655a3e07b`; the fingerprint changed only because base.yaml's Cb/Cr, which an RGB attack never uses, went from 8 to 12) differ in 123 of 1,731 images, by up to 16/255 on about 3% of a plate's pixels.
   Cause: cuDNN's backward pass is not deterministic, and PGD steps along `sign(gradient)`, so a tiny difference flips a pixel's step.
   The effect on metrics is negligible; the code's docstrings no longer claim the attack is deterministic on GPU.
+- **Extra ensemble surrogates: yolov8n s0 and yolov8l s0 (2026-11-10, milestone 2a Task 7).**
+  Fine-tuned with the same recipe as yolov8s (100 epochs, best epoch kept).
+  Best validation mAP50: yolov8n 0.895 (epoch 87), yolov8l 0.890 (epoch 46), against yolov8s s0's 0.898 (epoch 58).
+  All three curves plateau near 0.88 to 0.90 and their validation box loss rises slowly after about epoch 50, so keeping the best epoch matters; yolov8l peaks earliest, as a larger model should.
+  Both are good enough to serve as surrogates.
+- **Visibility ladders: white-box drop and LPIPS per rung (2026-11-11, milestone 2a Task 10).**
+  300 test images, yolov8s s0 attacked and evaluated, milestone 1 attack settings (no momentum, no input diversity); LPIPS is the mean over 311 plate crops.
+
+  | Rung | yolov8s mAP50 drop | LPIPS mean |
+  |---|---|---|
+  | Y 2, Cb/Cr 12 | 0.894 | 0.038 |
+  | Y 2, Cb/Cr 16 | 0.934 | 0.053 |
+  | Y 2, Cb/Cr 20 | 0.955 | 0.068 |
+  | Y 2, Cb/Cr 24 | 0.959 | 0.080 |
+  | RGB 8 | 0.864 | 0.026 |
+  | RGB 10 | 0.913 | 0.034 |
+  | RGB 12 | 0.942 | 0.045 |
+
+  The ceilings come from the blind eye test (session `ceiling1`), not from LPIPS.
+  The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 
 ## Open
 

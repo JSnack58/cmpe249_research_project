@@ -1,0 +1,92 @@
+{
+  "visibility_rgb_rgb8": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.10721353961368507,
+        "attacked_map50_low": 0.07325582660897197,
+        "attacked_map50_high": 0.15448895789798042,
+        "drop_map50": 0.8638969913794581,
+        "drop_map50_low": 0.8173146683546608,
+        "drop_map50_high": 0.9009215162792293,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.07717041800643087,
+        "attacked_recall50_low": 0.04838709677419355,
+        "attacked_recall50_high": 0.1114738711055941,
+        "drop_recall50": 0.8842443729903537,
+        "drop_recall50_low": 0.8446548004314994,
+        "drop_recall50_high": 0.9185733850839713,
+        "drop_seed_min": 0.8638969913794581,
+        "drop_seed_max": 0.8638969913794581
+      }
+    ],
+    "gate": null,
+    "verdict": null
+  },
+  "visibility_rgb_rgb10": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.058310787722395736,
+        "attacked_map50_low": 0.03273969155646658,
+        "attacked_map50_high": 0.09135831359264643,
+        "drop_map50": 0.9127997432707474,
+        "drop_map50_low": 0.8792181774738298,
+        "drop_map50_high": 0.942416438781509,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.03858520900321544,
+        "attacked_recall50_low": 0.01910828025477707,
+        "attacked_recall50_high": 0.0641025641025641,
+        "drop_recall50": 0.9228295819935692,
+        "drop_recall50_low": 0.8913650978946506,
+        "drop_recall50_high": 0.9516129032258065,
+        "drop_seed_min": 0.9127997432707474,
+        "drop_seed_max": 0.9127997432707474
+      }
+    ],
+    "gate": null,
+    "verdict": null
+  },
+  "visibility_rgb_rgb12": {
+    "table": [
+      {
+        "architecture": "yolov8s (white-box)",
+        "seeds": "0",
+        "clean_map50": 0.9711105309931432,
+        "clean_map50_low": 0.9530400893997274,
+        "clean_map50_high": 0.9847730841691854,
+        "attacked_map50": 0.028745041212621242,
+        "attacked_map50_low": 0.014297498132824547,
+        "attacked_map50_high": 0.04988809307625595,
+        "drop_map50": 0.9423654897805219,
+        "drop_map50_low": 0.9170303109838605,
+        "drop_map50_high": 0.9631615530518624,
+        "clean_recall50": 0.9614147909967846,
+        "clean_recall50_low": 0.9383116883116883,
+        "clean_recall50_high": 0.9807692307692307,
+        "attacked_recall50": 0.01929260450160772,
+        "attacked_recall50_low": 0.0063892676176715985,
+        "attacked_recall50_high": 0.035875292291668755,
+        "drop_recall50": 0.9421221864951769,
+        "drop_recall50_low": 0.9153094462540716,
+        "drop_recall50_high": 0.9647464057507987,
+        "drop_seed_min": 0.9423654897805219,
+        "drop_seed_max": 0.9423654897805219
+      }
+    ],
+    "gate": null,
+    "verdict": null
+  }
+}
