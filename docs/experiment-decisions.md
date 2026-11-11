@@ -154,6 +154,13 @@ Each entry notes where it came from.
   The bottom rung of both ladders failed, so neither ladder has a ceiling yet, and by the spec both extend down one rung at a time (Cb/Cr 8 then 4, RGB 6 then 4).
   So Milestone 1's main budget (Y 2, Cb/Cr 12) failed narrowly and its RGB 8 comparison failed clearly: a careful viewer could tell those attacked plates from clean ones in side-by-side crops.
   The Cb/Cr 16 pass does not count, because a smaller rung failed; at 23 of 40 it is most likely chance.
+- **Eye test `ceiling2`: Cb/Cr 8 and RGB 6 also visible (2026-11-11, milestone 2a Task 10).**
+  80 trials, same viewer and rule: Cb/Cr 8: 26 of 40 correct (fail), RGB 6: 32 of 40 (fail); both ladders extend down to 4.
+  White-box yolov8s mAP50 drop at these rungs: Cb/Cr 8 0.793, RGB 6 0.753; LPIPS 0.023 and 0.016.
+  RGB scored 32, 32 and 33 at budgets 6, 8 and 12, so detection did not ease as the budget halved.
+  Checked that this is the noise and not a pipeline artifact: in every trial the attacked crop differs from the clean one by at most the budget (6 for RGB 6), both crops come from the same 640-pixel resize, and the attacked crop is slightly sharper (Laplacian energy up about 8 to 11%), not blurrier.
+  The viewer's cues: a grainy, gridded texture, a look of blur, and faint swirl patterns that show most near the plate's characters.
+  A likely reading: PGD pushes most pixels to the edge of the budget, which shows as grain on the plate's flat background whatever the exact size, while busy plates hide it.
   The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 
 ## Open
