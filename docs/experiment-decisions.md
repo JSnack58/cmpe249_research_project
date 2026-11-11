@@ -167,6 +167,10 @@ Each entry notes where it came from.
   White-box yolov8s mAP50 drop: Cb/Cr 4 0.511 [0.454, 0.565], RGB 4 0.545 [0.487, 0.601]; LPIPS 0.0083 and 0.0080.
   At the same LPIPS the chroma attack passed and the RGB one failed clearly, so for this viewer chroma noise hides better than RGB noise of equal perceptual distance (relevant to H2).
   Next, by the spec's ladder-end rule: RGB extends down to 2 ("until one passes"), and the Y ladder tests Y 3 at Cb/Cr 4 (Y 4 only if Y 3 passes).
+- **Eye test `ceiling4`: RGB ceiling 2; Y 3 passes (2026-11-11, milestone 2a Task 10).**
+  80 trials, same viewer and rule: Y 3 at Cb/Cr 4: 24 of 40 correct (pass), RGB 2: 20 of 40 (pass).
+  The RGB ladder's ceiling is RGB 2 (white-box mAP50 drop 0.233 [0.191, 0.275], LPIPS 0.0021).
+  Y 3 at Cb/Cr 4 has a white-box drop of 0.635 [0.577, 0.689] and LPIPS 0.0111; as the top tested Y rung it passed, so the Y ladder goes on to Y 4.
   The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 
 ## Open
