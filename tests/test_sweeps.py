@@ -159,3 +159,43 @@ def test_y_ladder_raises_y_at_the_cbcr_ceiling():
         a = load_config(VIS_Y, variant=v).attack
         assert (a.method, a.space, a.eps.cb, a.eps.cr) == ("pgd", "ycbcr", 4, 4), v
         assert a.eps.y == int(v[1:]), v
+
+
+TRANSFER_DEV = CONFIG_DIR / "sweeps" / "transfer_dev.yaml"
+ENSEMBLE = [{"name": m, "seed": 0} for m in ("yolov8s", "yolov8n", "yolov8l")]
+
+
+def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
+    assert variants(TRANSFER_DEV) == ["ens", "ens_di", "ens_mi", "ens_di_mi"]
+    base = load_config(BASE_CONFIG).attack.eps
+    raw = yaml.safe_load(TRANSFER_DEV.read_text())
+    for v in variants(TRANSFER_DEV):
+        cfg = load_config(TRANSFER_DEV, variant=v)
+        assert cfg.data.split == "val", v
+        assert [dict(m) for m in cfg.models.surrogates] == ENSEMBLE, v
+        targets = [dict(t) for t in cfg.models.targets]
+        assert not any(t["name"].startswith("rtdetr") for t in targets), v
+        assert targets == [
+            *ENSEMBLE,
+            *({"name": "yolov8s", "seed": s} for s in (1, 2)),
+            *({"name": "yolov10l", "seed": s} for s in (0, 1, 2)),
+        ], v
+        a = cfg.attack
+        assert (a.method, a.space) == ("pgd", "ycbcr"), v
+        assert (a.eps.y, a.eps.cb, a.eps.cr) == (base.y, base.cb, base.cr), v  # frozen ceiling
+    # The budget is written into the file, so a later base.yaml change cannot move it silently.
+    shared = raw["overrides"]
+    assert {"attack.eps.y", "attack.eps.cb", "attack.eps.cr", "attack.space"} <= shared.keys()
+    techniques = {
+        v: (
+            load_config(TRANSFER_DEV, variant=v).attack.diversity.p,
+            load_config(TRANSFER_DEV, variant=v).attack.momentum,
+        )
+        for v in variants(TRANSFER_DEV)
+    }
+    assert techniques == {
+        "ens": (0.0, 0.0),
+        "ens_di": (0.5, 0.0),
+        "ens_mi": (0.0, 1.0),
+        "ens_di_mi": (0.5, 1.0),
+    }

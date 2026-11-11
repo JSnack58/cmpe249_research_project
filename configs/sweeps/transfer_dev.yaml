@@ -1,0 +1,40 @@
+# Transfer ablation on the validation split (milestone 2a, spec 2026-11-10 sections 4 and 5).
+# Which transfer techniques move a held-out CNN (YOLOv10l) at the frozen YCbCr ceiling?
+# Every variant attacks the same three-model ensemble; input diversity (DI) and momentum (MI)
+# switch on alone and together. RT-DETR is not a target here, so its number cannot steer the
+# choice; the test set is not touched until the final run.
+#
+#   ./run_ablations.sh configs/sweeps/transfer_dev.yaml
+
+id: transfer_dev
+
+overrides:
+  data.split: val
+  attack.method: pgd
+  attack.space: ycbcr
+  # The frozen visibility ceiling (docs/experiment-decisions.md), written out so that a later
+  # base.yaml change cannot move it silently.
+  attack.eps.y: 3
+  attack.eps.cb: 4
+  attack.eps.cr: 4
+  models.surrogates:
+    - {name: yolov8s, seed: 0}
+    - {name: yolov8n, seed: 0}
+    - {name: yolov8l, seed: 0}
+  # The surrogates (white-box rows), YOLOv8s's other seeds (same architecture, unseen weights)
+  # and the gate's model, YOLOv10l.
+  models.targets:
+    - {name: yolov8s, seed: 0}
+    - {name: yolov8n, seed: 0}
+    - {name: yolov8l, seed: 0}
+    - {name: yolov8s, seed: 1}
+    - {name: yolov8s, seed: 2}
+    - {name: yolov10l, seed: 0}
+    - {name: yolov10l, seed: 1}
+    - {name: yolov10l, seed: 2}
+
+variants:
+  ens: {}
+  ens_di: {attack.diversity.p: 0.5}
+  ens_mi: {attack.momentum: 1.0}
+  ens_di_mi: {attack.diversity.p: 0.5, attack.momentum: 1.0}
