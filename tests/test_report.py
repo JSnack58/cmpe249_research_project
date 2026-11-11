@@ -6,7 +6,7 @@ import pytest
 from omegaconf import OmegaConf
 
 from plate_cloak import cli
-from plate_cloak.analysis.report import h1_table, h1_verdict, report
+from plate_cloak.analysis.report import h1_table, h1_verdict, load_run, report, transfer_gate
 from plate_cloak.config import BASE_CONFIG, load_config
 
 N_IMAGES = 120
@@ -20,6 +20,7 @@ def write_synthetic_run(
     retrained_drop=0.2,
     targets=None,
     clean_misses=(),
+    surrogates=None,
 ):
     """A run folder in the evaluate stage's format, with known drops.
 
@@ -33,7 +34,11 @@ def write_synthetic_run(
     targets = targets or [(name, seed) for name in drops for seed in (0, 1, 2)]
     run_dir.mkdir(parents=True)
     target_cfg = ", ".join(f"{{name: {n}, seed: {s}}}" for n, s in targets)
-    cfg = load_config(BASE_CONFIG, [f"models.targets=[{target_cfg}]", "eval.bootstrap.n=200"])
+    overrides = [f"models.targets=[{target_cfg}]", "eval.bootstrap.n=200"]
+    if surrogates:
+        listed = ", ".join(f"{{name: {n}, seed: {s}}}" for n, s in surrogates)
+        overrides.append(f"models.surrogates=[{listed}]")
+    cfg = load_config(BASE_CONFIG, overrides)
     OmegaConf.save(cfg, run_dir / "config.yaml")
     ids = [f"img{i:03d}" for i in range(N_IMAGES)]
     dets, plates = [], []
@@ -164,3 +169,54 @@ def test_seed_mean_uses_the_same_resamples_for_every_seed(tmp_path):
     row = t.loc["rtdetr-l"]
     assert row["drop_seed_min"] == row["drop_seed_max"] == pytest.approx(row["drop_map50"])
     assert np.isfinite(row["drop_map50_low"])
+
+
+# --- ensembles, milestone 1 configs, transfer gate -------------------------------------------
+
+ENSEMBLE = [("yolov8s", 0), ("yolov8n", 0), ("yolov8l", 0)]
+
+
+def test_rows_for_an_ensemble(tmp_path):
+    targets = [*ENSEMBLE, ("yolov8s", 1), ("yolov8s", 2), *[("yolov10l", s) for s in (0, 1, 2)]]
+    drops = {"yolov8s": 0.9, "yolov8n": 0.8, "yolov8l": 0.7, "yolov10l": 0.5}
+    run = write_synthetic_run(tmp_path / "r", drops=drops, targets=targets, surrogates=ENSEMBLE)
+    t = h1_table(run)
+    assert list(t.index) == [
+        "yolov8s s0 (white-box)",
+        "yolov8n s0 (white-box)",
+        "yolov8l s0 (white-box)",
+        "yolov8s (retrained)",
+        "yolov10l",
+    ]
+    assert t.loc["yolov8n s0 (white-box)", "drop_map50"] == pytest.approx(0.8, abs=0.02)
+    assert list(t["seeds"]) == ["0", "0", "0", "1,2", "0,1,2"]
+
+
+def test_milestone_1_run_config_still_loads(tmp_path):
+    # Committed milestone 1 runs name one `surrogate` and have no `surrogates` list.
+    run = write_synthetic_run(tmp_path / "r")
+    cfg = OmegaConf.load(run / "config.yaml")
+    del cfg.models["surrogates"]
+    cfg.models.surrogate = {"name": "yolov8s", "seed": 0}
+    OmegaConf.save(cfg, run / "config.yaml")
+    t = h1_table(run)
+    assert list(t.index) == ["yolov8s (white-box)", "yolov8s (retrained)", "yolov10l", "rtdetr-l"]
+
+
+def test_gate_passes_only_when_the_ci_clears_the_bar(tmp_path):
+    strong = transfer_gate(load_run(write_synthetic_run(tmp_path / "a", drops={"yolov10l": 0.6})))
+    assert strong["passed"] and strong["model"] == "yolov10l" and strong["bar"] == 0.35
+    assert strong["drop"]["low"] >= 0.35
+    # A point estimate just above the bar is not enough: the CI must clear it too.
+    close = transfer_gate(load_run(write_synthetic_run(tmp_path / "b", drops={"yolov10l": 0.36})))
+    assert close["drop"]["point"] >= 0.35 > close["drop"]["low"] and not close["passed"]
+    alone = write_synthetic_run(tmp_path / "c", targets=[("yolov8s", 0)])
+    assert transfer_gate(load_run(alone)) is None
+
+
+def test_report_shows_the_gate(tmp_path):
+    out = tmp_path / "report"
+    report([write_synthetic_run(tmp_path / "runs" / "main", drops={"yolov10l": 0.6})], out)
+    data = json.loads((out / "h1.json").read_text())
+    assert data["main"]["gate"]["passed"] is True
+    assert "**Transfer gate passed.**" in (out / "h1_table.md").read_text()

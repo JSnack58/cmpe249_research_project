@@ -7,13 +7,15 @@ Reads run folders written by the evaluate stage and writes into --out:
     h1.json       the same numbers plus the H1 verdict per run
     h1_bars.png   clean vs. attacked mAP50 per architecture, with 95% CI error bars
 
-Rows group the targets by role: the surrogate itself (white-box), the surrogate's architecture
+Rows group the targets by role: each surrogate itself (white-box), the surrogate architectures
 retrained with other seeds, then every other architecture. A row's value is the mean over its
 seeds. Every number is a bootstrap CI over images, and every statistic in a run uses the same
 resamples, so differences between rows or conditions are paired.
 
 H1 holds when the CNN control's drop minus RT-DETR's drop is at least `threshold` (0.35 mAP50,
 fixed in advance) and its CI excludes 0.
+The transfer gate comes first: H1 is only testable if the CNN control itself drops by at least
+0.35, with its whole CI at or above that (milestone 2a's transfer bar).
 """
 
 from __future__ import annotations
@@ -93,20 +95,28 @@ def load_run(run_dir: Path) -> Run:
     return Run(run_dir.name, cfg, n, pooled, plates)
 
 
+def surrogates_of(cfg: DictConfig) -> list[tuple[str, int]]:
+    """The models the attack was computed on. Milestone 1 run configs name one `surrogate`."""
+    listed = cfg.models.surrogates if "surrogates" in cfg.models else [cfg.models.surrogate]
+    return [(m.name, m.seed) for m in listed]
+
+
 def architecture_rows(cfg: DictConfig) -> dict[str, list[tuple[str, int]]]:
-    """Row label -> its targets: white-box surrogate, retrained surrogate, then the others."""
-    # Milestone 1 run configs name one `surrogate`; later ones a `surrogates` list (Task 6 of
-    # milestone 2a gives every ensemble member its own row).
-    first = cfg.models.surrogates[0] if "surrogates" in cfg.models else cfg.models.surrogate
-    surrogate = (first.name, first.seed)
+    """Row label -> its targets: each white-box surrogate, the surrogate architectures retrained
+    with other seeds, then every other architecture, in target order."""
+    surrogates = surrogates_of(cfg)
     targets = [(t.name, t.seed) for t in cfg.models.targets]
     rows = {}
-    if surrogate in targets:
-        rows[f"{surrogate[0]} (white-box)"] = [surrogate]
-    retrained = [t for t in targets if t[0] == surrogate[0] and t != surrogate]
-    if retrained:
-        rows[f"{surrogate[0]} (retrained)"] = retrained
-    for name in dict.fromkeys(t[0] for t in targets if t[0] != surrogate[0]):
+    for name, seed in surrogates:
+        if (name, seed) in targets:
+            label = f"{name} (white-box)" if len(surrogates) == 1 else f"{name} s{seed} (white-box)"
+            rows[label] = [(name, seed)]
+    surrogate_names = list(dict.fromkeys(name for name, _ in surrogates))
+    for name in surrogate_names:
+        retrained = [t for t in targets if t[0] == name and t not in surrogates]
+        if retrained:
+            rows[f"{name} (retrained)"] = retrained
+    for name in dict.fromkeys(t[0] for t in targets if t[0] not in surrogate_names):
         rows[name] = [t for t in targets if t[0] == name]
     return rows
 
@@ -162,6 +172,20 @@ def h1_verdict(
     }
 
 
+def transfer_gate(run_dir: Path | Run, model: str = "yolov10l", bar: float = 0.35) -> dict | None:
+    """Did the attack transfer to `model` (the CNN control) well enough for H1 to be testable?
+
+    Passed when its seed-mean mAP50 drop CI lies at or above `bar` (the H1 threshold: below it,
+    H1 cannot hold however well the Transformer resists). None if the model is not a target.
+    """
+    run = run_dir if isinstance(run_dir, Run) else load_run(run_dir)
+    targets = [(t.name, t.seed) for t in run.cfg.models.targets if t.name == model]
+    if not targets:
+        return None
+    drop = run.ci(lambda w: run.drop(targets, "map50", w))
+    return {"model": model, "bar": bar, "drop": drop, "passed": bool(drop["low"] >= bar)}
+
+
 def report(runs: list[Path], out: Path) -> None:
     """Write h1_table.md, h1.json and h1_bars.png for the given run folders."""
     out = Path(out)
@@ -169,12 +193,16 @@ def report(runs: list[Path], out: Path) -> None:
     results = {}
     for run_dir in runs:
         run = load_run(run_dir)
-        results[run.name] = (h1_table(run), h1_verdict(run))
+        results[run.name] = (h1_table(run), h1_verdict(run), transfer_gate(run))
         print(f"report: {run.name} done")
     (out / "h1_table.md").write_text(_markdown(results))
     data = {
-        name: {"table": table.reset_index().to_dict(orient="records"), "verdict": verdict}
-        for name, (table, verdict) in results.items()
+        name: {
+            "table": table.reset_index().to_dict(orient="records"),
+            "gate": gate,
+            "verdict": verdict,
+        }
+        for name, (table, verdict, gate) in results.items()
     }
     (out / "h1.json").write_text(json.dumps(data, indent=2) + "\n")
     _bar_chart(results, out / "h1_bars.png")
@@ -223,7 +251,7 @@ def _markdown(results: dict) -> str:
         "Drop range is the smallest and largest single-seed mAP50 drop.",
         "",
     ]
-    for name, (table, verdict) in results.items():
+    for name, (table, verdict, gate) in results.items():
         lines += [
             f"## {name}",
             "",
@@ -239,6 +267,14 @@ def _markdown(results: dict) -> str:
                 f"| {_fmt(row, 'clean_recall50')} | {_fmt(row, 'attacked_recall50')} |"
             )
         lines.append("")
+        if gate is not None:
+            d = gate["drop"]
+            lines += [
+                f"**Transfer gate {'passed' if gate['passed'] else 'not passed'}.** "
+                f"Drop({gate['model']}) = {d['point']:.3f} [{d['low']:.3f}, {d['high']:.3f}] "
+                f"mAP50 (needs the whole CI at or above {gate['bar']} for H1 to be testable).",
+                "",
+            ]
         if verdict is None:
             lines += ["No H1 verdict: this run lacks the CNN control or the Transformer.", ""]
             continue
@@ -268,7 +304,7 @@ def _bar_chart(results: dict, path: Path) -> None:
     fig, axes = plt.subplots(
         1, len(results), figsize=(5 * len(results), 4), squeeze=False, sharey=True
     )
-    for ax, (name, (table, _)) in zip(axes[0], results.items(), strict=True):
+    for ax, (name, (table, *_)) in zip(axes[0], results.items(), strict=True):
         x = np.arange(len(table))
         for offset, part, color in ((-0.2, "clean", "#4c78a8"), (0.2, "attacked", "#e45756")):
             col = f"{part}_map50"
