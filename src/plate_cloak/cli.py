@@ -108,6 +108,44 @@ def visibility(args: argparse.Namespace) -> int:
     return 0
 
 
+def eyetest(args: argparse.Namespace) -> int:
+    """Make, serve or score a blind eye-test session (see plate_cloak.visibility.eyetest)."""
+    from plate_cloak.visibility import eyetest as et
+
+    root = args.root if args.root is not None else resolve_path(et.DEFAULT_ROOT)
+    if args.action == "make":
+        (session,) = args.session
+        budgets = _eyetest_budgets(args.sweeps, args.variants, args.overrides)
+        et.make_session(budgets, root / session)
+    elif args.action == "serve":
+        (session,) = args.session
+        et.serve(root / session, args.port)
+    else:
+        result = et.score([root / s for s in args.session])
+        for name, b in result["budgets"].items():
+            verdict = "pass" if b["passed"] else ("fail" if b["complete"] else "unfinished")
+            print(f"{name:<32} {b['correct']:>2}/{b['n']:<2} correct  {verdict}")
+        for name, lad in result["ladders"].items():
+            extend = f", extend {lad['extend']}" if lad["extend"] else ""
+            print(f"{name}: ceiling {lad['ceiling']}{extend}")
+    return 0
+
+
+def _eyetest_budgets(sweeps: list[Path], variants: list[str] | None, overrides: list[str]):
+    """One Budget per variant of each sweep file (only the named variants, if any)."""
+    from plate_cloak.config import variants as sweep_variants
+    from plate_cloak.visibility.eyetest import Budget
+
+    budgets = []
+    for sweep in sweeps:
+        for v in sweep_variants(sweep):
+            if variants is None or v in variants:
+                budgets.append(Budget(Path(sweep).stem, v, load_config(sweep, overrides, v)))
+    if not budgets:
+        raise ValueError(f"no variants {variants} in {[str(s) for s in sweeps]}")
+    return budgets
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments and dispatch to the chosen stage.
 
@@ -169,6 +207,16 @@ def main(argv: list[str] | None = None) -> int:
     p_vis.add_argument("--name", required=True, help="output folder name")
     p_vis.add_argument("--out", type=Path, help="parent folder (default: results/visibility)")
     p_vis.set_defaults(func=visibility)
+
+    p_eye = sub.add_parser("eyetest", help="blind eye test: which plate crop was attacked?")
+    p_eye.add_argument("action", choices=["make", "serve", "score"])
+    p_eye.add_argument("--session", nargs="+", required=True, help="session name (score: several)")
+    p_eye.add_argument("--sweeps", type=Path, nargs="+", help="make: sweep files, one per ladder")
+    p_eye.add_argument("--variants", nargs="+", help="make: only these variants")
+    p_eye.add_argument("--port", type=int, default=8765, help="serve: port on 127.0.0.1")
+    p_eye.add_argument("--root", type=Path, help="parent folder (default: results/eyetest)")
+    p_eye.add_argument("overrides", nargs="*", help="make: config overrides for every budget")
+    p_eye.set_defaults(func=eyetest)
 
     args = parser.parse_args(argv)
     return args.func(args)  # run the chosen stage; its return value becomes the exit code
