@@ -121,3 +121,30 @@ def test_eps_rgb8_is_the_milestone_1_rgb_attack():
     eps8 = load_config(EPS, variant="rgb8")
     ids = ["a", "b"]  # the fingerprint also covers the image ids; a fixed list compares settings
     assert fingerprint(m1, ids) == fingerprint(eps8, ids)
+
+
+VIS_CBCR = CONFIG_DIR / "sweeps" / "visibility_cbcr.yaml"
+VIS_RGB = CONFIG_DIR / "sweeps" / "visibility_rgb.yaml"
+
+
+def test_visibility_ladders_are_white_box_only_on_300_test_images():
+    for sweep in (VIS_CBCR, VIS_RGB):
+        for v in variants(sweep):
+            cfg = load_config(sweep, variant=v)
+            assert [dict(t) for t in cfg.models.targets] == SURROGATE_ONLY, v
+            assert [dict(m) for m in cfg.models.surrogates] == SURROGATE_ONLY, v
+            assert (cfg.data.n_eval, cfg.data.split) == (300, "test"), v
+            # Milestone 1's attack: no transfer techniques while the ceiling is chosen.
+            assert (cfg.attack.momentum, cfg.attack.diversity.p) == (0.0, 0.0), v
+
+
+def test_visibility_ladders_change_one_budget_per_rung():
+    assert variants(VIS_CBCR) == ["cb12", "cb16", "cb20", "cb24"]
+    for v in variants(VIS_CBCR):
+        a = load_config(VIS_CBCR, variant=v).attack
+        assert (a.method, a.space, a.eps.y) == ("pgd", "ycbcr", 2)
+        assert a.eps.cb == a.eps.cr == int(v[2:])
+    assert variants(VIS_RGB) == ["rgb8", "rgb10", "rgb12"]
+    for v in variants(VIS_RGB):
+        a = load_config(VIS_RGB, variant=v).attack
+        assert (a.method, a.space, a.eps.rgb) == ("pgd", "rgb", int(v[3:]))

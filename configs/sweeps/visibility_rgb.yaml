@@ -1,0 +1,17 @@
+# Visibility ceiling, RGB ladder (milestone 2a, spec 2026-11-10 section 3).
+# Same setup as visibility_cbcr.yaml, for the RGB comparison attack.
+# If the eye test passes rgb12, extend with rgb14, rgb16, ...; if rgb8 fails, with rgb6, rgb4.
+#
+#   ./run_ablations.sh configs/sweeps/visibility_cbcr.yaml configs/sweeps/visibility_rgb.yaml
+
+id: visibility_rgb
+
+overrides:
+  models.targets: [{name: yolov8s, seed: 0}]
+  data.n_eval: 300
+  data.split: test
+
+variants:
+  rgb8:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 8}
+  rgb10: {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 10}
+  rgb12: {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 12}

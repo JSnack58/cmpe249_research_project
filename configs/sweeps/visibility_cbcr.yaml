@@ -1,0 +1,21 @@
+# Visibility ceiling, Cb/Cr ladder (milestone 2a, spec 2026-11-10 section 3).
+# How far can the chroma budget go before the eye test can tell attacked plates from clean ones?
+# Milestone 1's attack (one surrogate, no transfer tricks), Y fixed at 2, Cb = Cr.
+# Only the white-box surrogate sees the images, so no transfer number exists while the ceiling is
+# chosen. 300 test images give the eye test plenty of plates and LPIPS a stable mean.
+# If the eye test passes cb24, extend with cb28, cb32, ...; if cb12 fails, with cb8, cb4.
+#
+#   ./run_ablations.sh configs/sweeps/visibility_cbcr.yaml configs/sweeps/visibility_rgb.yaml
+
+id: visibility_cbcr
+
+overrides:
+  models.targets: [{name: yolov8s, seed: 0}]
+  data.n_eval: 300
+  data.split: test
+
+variants:
+  cb12: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 12, attack.eps.cr: 12}
+  cb16: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 16, attack.eps.cr: 16}
+  cb20: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 20, attack.eps.cr: 20}
+  cb24: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 24, attack.eps.cr: 24}
