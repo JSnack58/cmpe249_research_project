@@ -1,0 +1,67 @@
+{
+  "budgets": {
+    "visibility_cbcr/cb20": {
+      "correct": 29,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_rgb/rgb10": {
+      "correct": 30,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_cbcr/cb24": {
+      "correct": 31,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_cbcr/cb12": {
+      "correct": 26,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_rgb/rgb12": {
+      "correct": 33,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_rgb/rgb8": {
+      "correct": 32,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    },
+    "visibility_cbcr/cb16": {
+      "correct": 23,
+      "n": 40,
+      "complete": true,
+      "passed": true
+    }
+  },
+  "ladders": {
+    "visibility_cbcr": {
+      "rungs": [
+        "cb12",
+        "cb16",
+        "cb20",
+        "cb24"
+      ],
+      "ceiling": null,
+      "extend": "down"
+    },
+    "visibility_rgb": {
+      "rungs": [
+        "rgb8",
+        "rgb10",
+        "rgb12"
+      ],
+      "ceiling": null,
+      "extend": "down"
+    }
+  }
+}

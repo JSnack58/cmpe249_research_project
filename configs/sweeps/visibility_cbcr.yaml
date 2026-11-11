@@ -15,6 +15,9 @@ overrides:
   data.split: test
 
 variants:
+  # cb4 and cb8 extend the ladder down: the eye test of 2026-11-11 failed cb12 (session ceiling1).
+  cb4:  {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 4, attack.eps.cr: 4}
+  cb8:  {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 8, attack.eps.cr: 8}
   cb12: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 12, attack.eps.cr: 12}
   cb16: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 16, attack.eps.cr: 16}
   cb20: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 20, attack.eps.cr: 20}

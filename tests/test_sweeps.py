@@ -139,12 +139,12 @@ def test_visibility_ladders_are_white_box_only_on_300_test_images():
 
 
 def test_visibility_ladders_change_one_budget_per_rung():
-    assert variants(VIS_CBCR) == ["cb12", "cb16", "cb20", "cb24"]
+    assert variants(VIS_CBCR) == ["cb4", "cb8", "cb12", "cb16", "cb20", "cb24"]
     for v in variants(VIS_CBCR):
         a = load_config(VIS_CBCR, variant=v).attack
         assert (a.method, a.space, a.eps.y) == ("pgd", "ycbcr", 2)
         assert a.eps.cb == a.eps.cr == int(v[2:])
-    assert variants(VIS_RGB) == ["rgb8", "rgb10", "rgb12"]
+    assert variants(VIS_RGB) == ["rgb4", "rgb6", "rgb8", "rgb10", "rgb12"]
     for v in variants(VIS_RGB):
         a = load_config(VIS_RGB, variant=v).attack
         assert (a.method, a.space, a.eps.rgb) == ("pgd", "rgb", int(v[3:]))

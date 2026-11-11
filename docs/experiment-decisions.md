@@ -148,6 +148,12 @@ Each entry notes where it came from.
   | RGB 12 | 0.942 | 0.045 |
 
   The ceilings come from the blind eye test (session `ceiling1`), not from LPIPS.
+- **Eye test `ceiling1`: the Milestone 1 budgets were visible (2026-11-11, milestone 2a Task 10).**
+  280 trials, 40 per rung, one viewer (the owner); a rung passes at 25 or fewer correct of 40.
+  Correct picks of the attacked crop: Cb/Cr 12: 26, Cb/Cr 16: 23, Cb/Cr 20: 29, Cb/Cr 24: 31, RGB 8: 32, RGB 10: 30, RGB 12: 33.
+  The bottom rung of both ladders failed, so neither ladder has a ceiling yet, and by the spec both extend down one rung at a time (Cb/Cr 8 then 4, RGB 6 then 4).
+  So Milestone 1's main budget (Y 2, Cb/Cr 12) failed narrowly and its RGB 8 comparison failed clearly: a careful viewer could tell those attacked plates from clean ones in side-by-side crops.
+  The Cb/Cr 16 pass does not count, because a smaller rung failed; at 23 of 40 it is most likely chance.
   The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 
 ## Open
