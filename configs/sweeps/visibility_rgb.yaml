@@ -12,7 +12,8 @@ overrides:
   data.split: test
 
 variants:
-  # rgb4 and rgb6 extend the ladder down: the eye test of 2026-11-11 failed rgb8 (session ceiling1).
+  # rgb2 to rgb6 extend the ladder down, one rung per eye-test session, after rgb8 failed (ceiling1).
+  rgb2:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 2}
   rgb4:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 4}
   rgb6:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 6}
   rgb8:  {attack.method: pgd, attack.space: rgb, attack.eps.rgb: 8}

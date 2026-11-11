@@ -1,0 +1,15 @@
+# Visibility ceiling, Y ladder (milestone 2a, spec 2026-11-10 section 3).
+# Raises the brightness budget at the Cb/Cr ceiling, which the eye test put at 4 (sessions ceiling1
+# to ceiling3). Its base rung, Y 2 at Cb/Cr 4, is visibility_cbcr's cb4, which passed.
+# Same setup as visibility_cbcr.yaml. Y 4 is only tested if Y 3 passes.
+
+id: visibility_y
+
+overrides:
+  models.targets: [{name: yolov8s, seed: 0}]
+  data.n_eval: 300
+  data.split: test
+
+variants:
+  y3: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 3, attack.eps.cb: 4, attack.eps.cr: 4}
+  y4: {attack.method: pgd, attack.space: ycbcr, attack.eps.y: 4, attack.eps.cb: 4, attack.eps.cr: 4}

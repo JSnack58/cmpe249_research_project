@@ -125,10 +125,11 @@ def test_eps_rgb8_is_the_milestone_1_rgb_attack():
 
 VIS_CBCR = CONFIG_DIR / "sweeps" / "visibility_cbcr.yaml"
 VIS_RGB = CONFIG_DIR / "sweeps" / "visibility_rgb.yaml"
+VIS_Y = CONFIG_DIR / "sweeps" / "visibility_y.yaml"
 
 
 def test_visibility_ladders_are_white_box_only_on_300_test_images():
-    for sweep in (VIS_CBCR, VIS_RGB):
+    for sweep in (VIS_CBCR, VIS_RGB, VIS_Y):
         for v in variants(sweep):
             cfg = load_config(sweep, variant=v)
             assert [dict(t) for t in cfg.models.targets] == SURROGATE_ONLY, v
@@ -144,7 +145,16 @@ def test_visibility_ladders_change_one_budget_per_rung():
         a = load_config(VIS_CBCR, variant=v).attack
         assert (a.method, a.space, a.eps.y) == ("pgd", "ycbcr", 2)
         assert a.eps.cb == a.eps.cr == int(v[2:])
-    assert variants(VIS_RGB) == ["rgb4", "rgb6", "rgb8", "rgb10", "rgb12"]
+    assert variants(VIS_RGB) == ["rgb2", "rgb4", "rgb6", "rgb8", "rgb10", "rgb12"]
     for v in variants(VIS_RGB):
         a = load_config(VIS_RGB, variant=v).attack
         assert (a.method, a.space, a.eps.rgb) == ("pgd", "rgb", int(v[3:]))
+
+
+def test_y_ladder_raises_y_at_the_cbcr_ceiling():
+    # The eye test put the Cb/Cr ceiling at 4 (sessions ceiling1 to ceiling3); Y 2 is its base rung.
+    assert variants(VIS_Y) == ["y3", "y4"]
+    for v in variants(VIS_Y):
+        a = load_config(VIS_Y, variant=v).attack
+        assert (a.method, a.space, a.eps.cb, a.eps.cr) == ("pgd", "ycbcr", 4, 4), v
+        assert a.eps.y == int(v[1:]), v
