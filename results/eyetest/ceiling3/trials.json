@@ -1,0 +1,666 @@
+{
+ "seed": 42,
+ "n_per_budget": 40,
+ "budgets": [
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "eps": {
+    "y": 2,
+    "cb": 4,
+    "cr": 4
+   },
+   "size": 10
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "eps": {
+    "rgb": 4
+   },
+   "size": 4
+  }
+ ],
+ "trials": [
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "83464c93e41b6272",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t001"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "cc38a6c7163914ad",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t002"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "4daaf9ef1d7a5ce2",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t003"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "05ecb7ae3dd851cc",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t004"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "524bbb4d0ceadc59",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t005"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "3283ac54ac7475a4",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t006"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "41e6ee53092edd0d",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t007"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "6f95a889709ce186",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t008"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "1ef087d553542979",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t009"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "e8a1a9c789e6ee6e",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t010"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "c1cd43ad02888916",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t011"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "890397aa6ae68e79",
+   "plate_idx": 1,
+   "attacked": "right",
+   "id": "t012"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "51f17f0ecd40ee02",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t013"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "13d5bdf54c090680",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t014"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "bf5b9c565b728298",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t015"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "93514ac0a0c16f87",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t016"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "ad8455f96d623cb7",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t017"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "0fe3b6e7cbe31a90",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t018"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "afddcf139ce18912",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t019"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "b660e7fca4d06b2e",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t020"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "1f99f99ba1ac1bc5",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t021"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "e7694e3de6a80bb3",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t022"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "6e217565290f2986",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t023"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "bad5f8a18bb7b9ae",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t024"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "b218350ee287ae10",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t025"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "18fabcc80e6073a1",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t026"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "55e41d4e06a4fcaa",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t027"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "31b323e3c8e7c68e",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t028"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "28b404db192bc9d9",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t029"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "47b81ed691434c8d",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t030"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "ad8455f96d623cb7",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t031"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "b9762ec81b112d31",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t032"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "fefb68c6a13c4e6f",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t033"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "476894070ca68a7f",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t034"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "3a54b5a73b139f63",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t035"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "15a6fbbb17c67ee3",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t036"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "0937ef8bb2b601ee",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t037"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "95dc2fcffd90bb6a",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t038"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "6b2f5478b1fffdee",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t039"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "b53cc2a8932661c9",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t040"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "9050310af48962b1",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t041"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "80c0caec827fe7d8",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t042"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "21911d28dcd8d6d5",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t043"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "8befdbed09103d31",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t044"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "fca487de5f3126dc",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t045"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "3a54b5a73b139f63",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t046"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "20e8e60ed10a262e",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t047"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "875bcbc56b83facc",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t048"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "a118950a265b8fde",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t049"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "bff18b127549fec7",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t050"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "476894070ca68a7f",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t051"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "ca687cb2c51c3b92",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t052"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "e77609fd7302d9a6",
+   "plate_idx": 1,
+   "attacked": "right",
+   "id": "t053"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "42ae05c8eab2b13c",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t054"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "66373fbbf5930a14",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t055"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "4d841600d50dbea6",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t056"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "4daaf9ef1d7a5ce2",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t057"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "c3945b02460e672f",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t058"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "08a8f438e02ee435",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t059"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "725ec093b4da5183",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t060"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "d86b9114a95f98d5",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t061"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "b43d5dca6c34a04b",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t062"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "a218019b62c20677",
+   "plate_idx": 2,
+   "attacked": "left",
+   "id": "t063"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "80c0caec827fe7d8",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t064"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "23d43a0639b981ce",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t065"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "4ad77d06fa730c26",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t066"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "a8eb1407e107144f",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t067"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "c0d8ef1a9857ae97",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t068"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "5a970fe53db66af2",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t069"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "b5d82289e0a2c83c",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t070"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "805df458fb94f5bc",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t071"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "66b2f68e9fb39bf2",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t072"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "934f305bf0393abb",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t073"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "a4a20424bb27b3bf",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t074"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "66373fbbf5930a14",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t075"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "d7959bac46055ea6",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t076"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "e2f8dcf20204063a",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t077"
+  },
+  {
+   "ladder": "visibility_cbcr",
+   "rung": "cb4",
+   "image_id": "d21d2af338748a0f",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t078"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "bf1da1a5e17be9ac",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t079"
+  },
+  {
+   "ladder": "visibility_rgb",
+   "rung": "rgb4",
+   "image_id": "cc7db972ce12142d",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t080"
+  }
+ ]
+}
