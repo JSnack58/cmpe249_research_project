@@ -158,11 +158,17 @@ def pgd(
             seen = F.pad(_apply(x, delta, s.space), padding, value=PAD_VALUE)
             if s.diversity_p > 0:
                 seen = diverse(seen, s.diversity_p, s.diversity_min_scale, generator)
-            losses = [
-                _loss(_raw(net(seen)), boxes_padded, s.loss) / c
+            # Each surrogate's gradient is taken on its raw loss and scaled afterwards. Scaling
+            # the loss instead would scale every number in the backward pass, and float rounding
+            # then flips the sign of near-zero entries, so even one surrogate would no longer
+            # reproduce milestone 1's steps exactly.
+            grad = sum(
+                torch.autograd.grad(
+                    _loss(_raw(net(seen)), boxes_padded, s.loss), delta, retain_graph=True
+                )[0]
+                / c
                 for net, c in zip(nets, scale, strict=True)
-            ]
-            (grad,) = torch.autograd.grad(torch.stack(losses).mean(), delta)
+            ) / len(nets)
         with torch.no_grad():
             # Momentum: the gradient scaled to mean size 1, added to the decayed running sum.
             velocity = s.momentum * velocity + grad / grad.abs().mean().clamp_min(1e-12)
