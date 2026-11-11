@@ -114,10 +114,11 @@ def test_eps_sweep_only_raises_the_rgb_budget_and_keeps_every_target():
 
 
 def test_eps_rgb8_is_the_milestone_1_rgb_attack():
-    # Same attack settings as the m1 RGB run (base.yaml with space=rgb), so it reuses that cache.
+    # Same attack settings as the m1 RGB run (base.yaml as it was then, with space=rgb, which meant
+    # RGB 8), so it reuses that cache.
     from plate_cloak.attack.stage import fingerprint
 
-    m1 = load_config(BASE_CONFIG, overrides=["attack.space=rgb"])
+    m1 = load_config(BASE_CONFIG, overrides=["attack.space=rgb", "attack.eps.rgb=8"])
     eps8 = load_config(EPS, variant="rgb8")
     ids = ["a", "b"]  # the fingerprint also covers the image ids; a fixed list compares settings
     assert fingerprint(m1, ids) == fingerprint(eps8, ids)

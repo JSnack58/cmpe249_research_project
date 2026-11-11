@@ -105,7 +105,7 @@ def test_cli_visibility_writes_csv_and_summary(tmp_path, monkeypatch):
     assert summary["n"] == 2 and summary["n_skipped"] == 0
     assert summary["mean"] == pytest.approx(0.1)  # 0.1 per image here (one plate each)
     assert summary["fingerprint"] == adv_dir.name
-    assert summary["budget"] == {"y": 2, "cb": 12, "cr": 12}
+    assert summary["budget"] == {"y": 3, "cb": 4, "cr": 4}
 
 
 def test_cli_visibility_refuses_an_unfinished_cache(tmp_path):

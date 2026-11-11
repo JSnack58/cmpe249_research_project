@@ -279,7 +279,7 @@ def test_unfinished_cache_is_refused(tmp_path, detectors):
 def test_cache_for_other_settings_is_refused(tmp_path, detectors):
     cfg = tiny_cfg(tmp_path)
     adv = fake_attack_cache(cfg)
-    other = load_config(BASE_CONFIG, [*_tiny_overrides(cfg), "attack.eps.cb=4"])
+    other = load_config(BASE_CONFIG, [*_tiny_overrides(cfg), "attack.eps.cb=8"])
     with pytest.raises(RuntimeError, match="different attack settings"):
         evaluate(other, adv)
 

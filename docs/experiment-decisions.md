@@ -171,6 +171,32 @@ Each entry notes where it came from.
   80 trials, same viewer and rule: Y 3 at Cb/Cr 4: 24 of 40 correct (pass), RGB 2: 20 of 40 (pass).
   The RGB ladder's ceiling is RGB 2 (white-box mAP50 drop 0.233 [0.191, 0.275], LPIPS 0.0021).
   Y 3 at Cb/Cr 4 has a white-box drop of 0.635 [0.577, 0.689] and LPIPS 0.0111; as the top tested Y rung it passed, so the Y ladder goes on to Y 4.
+- **Visibility ceiling, frozen: YCbCr Y 3, Cb/Cr 4; RGB 2 (2026-11-11, milestone 2a Task 10).**
+  Decided by the blind eye test (sessions `ceiling1` to `ceiling5`, 520 trials, one viewer, the owner) under the rule fixed before any trial: a budget passes at 25 or fewer correct of 40, and a ladder's ceiling is its largest passing budget with every smaller one passing.
+  Eye test `ceiling5`: Y 4 at Cb/Cr 4, 26 of 40 correct (fail), so the Y ladder stops at 3.
+  No transfer number existed when this was decided: every rung attacked and was evaluated on YOLOv8s seed 0 only.
+  White-box columns are YOLOv8s seed 0 on the 300-image test subsample; LPIPS is over 311 plate crops.
+
+  | Budget | Correct of 40 | Eye test | LPIPS mean | LPIPS median | mAP50 drop | Attacked recall |
+  |---|---|---|---|---|---|---|
+  | Y 2, Cb/Cr 4 | 24 | pass | 0.0083 | 0.0061 | 0.511 | 0.370 |
+  | Y 2, Cb/Cr 8 | 26 | fail | 0.0229 | 0.0187 | 0.793 | 0.135 |
+  | Y 2, Cb/Cr 12 | 26 | fail | 0.0384 | 0.0328 | 0.894 | 0.048 |
+  | Y 2, Cb/Cr 16 | 23 | pass (does not count) | 0.0531 | 0.0466 | 0.934 | 0.023 |
+  | Y 2, Cb/Cr 20 | 29 | fail | 0.0676 | 0.0612 | 0.955 | 0.013 |
+  | Y 2, Cb/Cr 24 | 31 | fail | 0.0803 | 0.0729 | 0.959 | 0.010 |
+  | **Y 3, Cb/Cr 4** | 24 | pass | 0.0111 | 0.0076 | 0.635 | 0.257 |
+  | Y 4, Cb/Cr 4 | 26 | fail | 0.0145 | 0.0097 | 0.725 | 0.183 |
+  | **RGB 2** | 20 | pass | 0.0021 | 0.0011 | 0.233 | 0.659 |
+  | RGB 4 | 33 | fail | 0.0080 | 0.0045 | 0.545 | 0.334 |
+  | RGB 6 | 32 | fail | 0.0164 | 0.0103 | 0.753 | 0.158 |
+  | RGB 8 | 32 | fail | 0.0255 | 0.0169 | 0.864 | 0.077 |
+  | RGB 10 | 30 | fail | 0.0344 | 0.0241 | 0.913 | 0.039 |
+  | RGB 12 | 33 | fail | 0.0452 | 0.0335 | 0.942 | 0.019 |
+
+  Clean recall for all rows: 0.961.
+  `configs/base.yaml` now holds these budgets, so every config that does not set its own budget attacks at the ceiling; milestone 1's runs keep their own budgets in their stored `config.yaml`.
+  Two readings for the write-up: the milestone 1 budgets (Cb/Cr 12, RGB 8) were visible to a careful viewer, and at equal LPIPS the YCbCr attack hid better than RGB (Y 3, Cb/Cr 4 passed at LPIPS 0.011; RGB 4 failed at 0.008).
   The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 
 ## Open

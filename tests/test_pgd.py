@@ -88,7 +88,7 @@ def test_settings_from_base_config():
 
 def test_settings_rgb_uses_one_budget_for_all_channels():
     cfg = load_config(BASE_CONFIG, overrides=["attack.space=rgb"])
-    assert torch.allclose(AttackSettings.from_cfg(cfg.attack).eps * 255, torch.full((3,), 8.0))
+    assert torch.allclose(AttackSettings.from_cfg(cfg.attack).eps * 255, torch.full((3,), 2.0))
 
 
 def test_sobel_mask_is_not_silently_ignored():

@@ -61,7 +61,7 @@ def fake_surrogate(monkeypatch):
 def test_fingerprint_changes_with_attack_settings_and_images():
     base = load_config(BASE_CONFIG)
     f = fingerprint(base, ["a", "b"])
-    assert fingerprint(load_config(BASE_CONFIG, ["attack.eps.cb=4"]), ["a", "b"]) != f
+    assert fingerprint(load_config(BASE_CONFIG, ["attack.eps.cb=8"]), ["a", "b"]) != f
     assert fingerprint(load_config(BASE_CONFIG, ["attack.loss.type=hinge"]), ["a", "b"]) != f
     other = "models.surrogates=[{name: yolov8s, seed: 1}]"
     assert fingerprint(load_config(BASE_CONFIG, [other]), ["a", "b"]) != f
@@ -83,7 +83,7 @@ def fp(*overrides):
 
 def test_fingerprint_ignores_budgets_the_space_does_not_use():
     # An RGB attack never reads Cb/Cr, so changing them must not invalidate its cache.
-    assert fp("attack.space=rgb") == fp("attack.space=rgb", "attack.eps.cb=4", "attack.eps.y=1")
+    assert fp("attack.space=rgb") == fp("attack.space=rgb", "attack.eps.cb=8", "attack.eps.y=1")
     assert fp("attack.space=rgb") == fp("attack.space=rgb", "attack.quant_margin=0.3")
     assert fp() == fp("attack.eps.rgb=4")  # base is YCbCr
     assert fp() != fp("attack.quant_margin=0.3")
@@ -120,7 +120,7 @@ def test_attack_writes_images_audit_and_done(tmp_path, fake_surrogate):
     audit_rows = (out / "audit.csv").read_text().splitlines()
     assert audit_rows[0] == "image_id,R,G,B,Y,Cb,Cr" and len(audit_rows) == 3
     done = json.loads((out / "done.json").read_text())
-    assert done["n_images"] == 2 and done["max_change"]["Y"] <= 2.0
+    assert done["n_images"] == 2 and done["max_change"]["Y"] <= 3.0
     assert "weights-v1" in (out / "settings.yaml").read_text()
     assert not list(out.glob("*.tmp"))
 

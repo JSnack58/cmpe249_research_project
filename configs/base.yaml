@@ -37,10 +37,12 @@ attack:
   method: pgd             # pgd | random (random sign noise at the same budget: the control)
   space: ycbcr            # rgb | ycbcr
   eps:                    # L_inf budget per channel
-    rgb: 8                # used when space = rgb
-    y: 2                  # luminance: eyes are most sensitive to brightness
-    cb: 12                # chosen by the Cb/Cr sweep's rule (Task 12, docs/experiment-decisions.md)
-    cr: 12
+    # The visibility ceiling, frozen by the blind eye test (milestone 2a; docs/experiment-decisions.md,
+    # "Visibility ceiling, frozen"). Milestone 1 used rgb 8, y 2, cb/cr 12, which proved visible.
+    rgb: 2                # used when space = rgb
+    y: 3                  # luminance: eyes are most sensitive to brightness
+    cb: 4
+    cr: 4
   steps: 40
   step_factor: 2.5        # per-step size = step_factor * eps / steps
   margin: 0.10            # noise region = plate box grown by 10% on each side

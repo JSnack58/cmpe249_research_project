@@ -13,7 +13,8 @@ def write(path, text):
 def test_base_loads_with_expected_values():
     cfg = load_config(BASE_CONFIG)
     assert cfg.attack.steps == 40
-    assert cfg.attack.eps.y == 2
+    # The frozen visibility ceiling (milestone 2a, docs/experiment-decisions.md).
+    assert dict(cfg.attack.eps) == {"rgb": 2, "y": 3, "cb": 4, "cr": 4}
     assert cfg.eval.conf == 0.25
     assert cfg.data.min_plate_h == 11
 
@@ -30,9 +31,9 @@ def test_list_override():
 
 
 def test_override_and_variant(tmp_path):
-    sweep = write(tmp_path / "s.yaml", "id: s\nvariants:\n  cb4: {attack.eps.cb: 4}\n")
-    cfg = load_config(sweep, overrides=["attack.steps=10"], variant="cb4")
-    assert cfg.attack.eps.cb == 4 and cfg.attack.steps == 10 and cfg.attack.eps.y == 2
+    sweep = write(tmp_path / "s.yaml", "id: s\nvariants:\n  cb8: {attack.eps.cb: 8}\n")
+    cfg = load_config(sweep, overrides=["attack.steps=10"], variant="cb8")
+    assert cfg.attack.eps.cb == 8 and cfg.attack.steps == 10 and cfg.attack.eps.y == 3
 
 
 def test_sweep_shared_overrides_apply_to_every_variant(tmp_path):
