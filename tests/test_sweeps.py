@@ -166,7 +166,7 @@ ENSEMBLE = [{"name": m, "seed": 0} for m in ("yolov8s", "yolov8n", "yolov8l")]
 
 
 def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
-    assert variants(TRANSFER_DEV) == ["ens", "ens_di", "ens_mi", "ens_di_mi"]
+    assert variants(TRANSFER_DEV) == ["ens", "ens_di", "ens_mi", "ens_di_mi", "ens_di_mi_100"]
     base = load_config(BASE_CONFIG).attack.eps
     raw = yaml.safe_load(TRANSFER_DEV.read_text())
     for v in variants(TRANSFER_DEV):
@@ -198,4 +198,15 @@ def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
         "ens_di": (0.5, 0.0),
         "ens_mi": (0.0, 1.0),
         "ens_di_mi": (0.5, 1.0),
+        "ens_di_mi_100": (0.5, 1.0),
     }
+
+
+def test_transfer_dev_100_step_rerun_changes_only_the_steps_of_the_winner():
+    # The validation winner was ens_di_mi (YOLOv10l drop 0.085, docs/experiment-decisions.md).
+    fa = _flatten(load_config(TRANSFER_DEV, variant="ens_di_mi"))
+    fb = _flatten(load_config(TRANSFER_DEV, variant="ens_di_mi_100"))
+    assert {k for k in fa if fa[k] != fb[k]} == {"attack.steps"}
+    pair = ("ens_di_mi", "ens_di_mi_100")
+    steps = [load_config(TRANSFER_DEV, variant=v).attack.steps for v in pair]
+    assert steps == [40, 100]

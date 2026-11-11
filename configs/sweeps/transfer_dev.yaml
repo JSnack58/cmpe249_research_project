@@ -38,3 +38,6 @@ variants:
   ens_di: {attack.diversity.p: 0.5}
   ens_mi: {attack.momentum: 1.0}
   ens_di_mi: {attack.diversity.p: 0.5, attack.momentum: 1.0}
+  # The winner on YOLOv10l (0.085 [0.065, 0.104]) rerun with 100 steps; kept only if its drop beats
+  # the winner's by more than the winner's CI half-width (0.020), so above 0.105.
+  ens_di_mi_100: {attack.diversity.p: 0.5, attack.momentum: 1.0, attack.steps: 100}
