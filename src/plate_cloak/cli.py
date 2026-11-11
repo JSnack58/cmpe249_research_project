@@ -245,8 +245,9 @@ def _run_dir(cfg, name: str | None) -> Path:
     """results/runs/<name>, with a generated name when none is given."""
     from datetime import datetime
 
-    from plate_cloak.runs import run_name
+    from plate_cloak.runs import check_run_name, run_name
 
     if name is None:
         name = run_name(cfg, load_config(BASE_CONFIG), datetime.now())
+    check_run_name(name)  # here, so a bad name fails before an attack that can take hours
     return resolve_path(cfg.output.runs_root) / name

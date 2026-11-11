@@ -335,6 +335,22 @@ def test_cli_run_attacks_then_evaluates(tmp_path, detectors, monkeypatch):
     assert m["attack"]["fingerprint"] == fingerprint(expected, IDS)
 
 
+@pytest.mark.parametrize("command", ["run", "evaluate"])
+def test_cli_rejects_a_bad_run_name_before_any_attack(tmp_path, detectors, monkeypatch, command):
+    # A terminal that wraps a pasted line can turn --name transfer_dev_$v into transfer_dev_$;
+    # that must fail at once, not after an attack that can take hours (seen on 2026-11-11).
+    def no_attack(cfg):
+        raise AssertionError("the attack ran before the name was checked")
+
+    monkeypatch.setattr(attack_stage, "load_surrogates", no_attack)
+    cfg = tiny_cfg(tmp_path)
+    fake_attack_cache(cfg)  # so evaluate finds a cache and would otherwise go on
+    with pytest.raises(ValueError, match="run name"):
+        cli.main([command, "--name", "transfer_dev_$", *_tiny_overrides(cfg)])
+    assert detectors == {}  # no model was loaded
+    assert not (tmp_path / "runs").exists()
+
+
 def test_rerun_gives_byte_identical_outputs(tmp_path, detectors, monkeypatch):
     monkeypatch.setattr(stage, "provenance", lambda: {"git_commit": "x"})  # has a timestamp
     cfg = tiny_cfg(tmp_path)
