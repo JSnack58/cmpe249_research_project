@@ -224,6 +224,12 @@ Each entry notes where it came from.
   The rung below the ceiling is Y 2, Cb/Cr 4: the ceiling was reached by raising Y from 2 to 3, and Cb/Cr 4 is already the bottom of its ladder (the plan's "one rung down the Cb/Cr ladder" did not fit this case).
   Y 2, Cb/Cr 4 passed as plain PGD (`ceiling3`, 24 of 40); the new variant is `ens_di_mi_y2` in `configs/sweeps/transfer_dev.yaml`.
 
+- **Eye test `final_check2`: the final attack passes at Y 2, Cb/Cr 4 (2026-11-11, milestone 2a Task 12).**
+  40 trials on validation crops of `ens_di_mi_y2`: 24 of 40 correct (pass).
+  The final attack: ensemble YOLOv8s s0 + YOLOv8n s0 + YOLOv8l s0, input diversity (p 0.5) and momentum (1.0), 40 steps, YCbCr Y 2, Cb/Cr 4.
+  On validation it drops YOLOv10l's mAP50 by 0.062 (seed mean; 0.070, 0.061, 0.055) and the surrogates' by 0.19 to 0.21.
+  The RGB comparison runs the same attack at the RGB ceiling, RGB 2, which passed as plain PGD (`ceiling4`, 20 of 40) and was not re-checked with the transfer techniques (the spec re-checks the YCbCr attack only).
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**
