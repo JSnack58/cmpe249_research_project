@@ -250,8 +250,16 @@ Each entry notes where it came from.
   Readings for the write-up:
   - The ordering is the one H1 predicts, white-box > other YOLOv8s seeds > YOLOv10l > RT-DETR, and RT-DETR barely moves (0.006), but the CNN control moves too little for the gap to say anything about attention.
   - Transfer falls off even between seeds of the same architecture (0.21 white-box to 0.09 retrained), so at this budget the attack mostly exploits each model's own weights; the invisible budget, not the CNN-to-Transformer gap, is the binding limit.
-  - Compared with milestone 1 (YOLOv10l drop 0.035 at the visible Cb/Cr 12), the transfer techniques reach twice that drop at a third of the chroma budget and two thirds of the brightness budget.
+  - Compared with milestone 1 (YOLOv10l drop 0.035 at the visible Y 2, Cb/Cr 12), the transfer techniques reach twice that drop at the same brightness budget and a third of the chroma budget.
   - At their ceilings the YCbCr attack transfers about twice as well as the RGB one (0.069 against 0.033), because the eye allows a larger chroma budget than an RGB one; this is relevant to H2.
+- **Eye-test sides were not balanced in the committed sessions; the ceilings stand (2026-11-11, final review).**
+  The session builder drew the attacked side per trial at random, so a budget's 40 trials had between 16 and 25 attacked on the left, and the viewer picked "left" in 19 to 34 of 40.
+  With unbalanced sides, a viewer who leans to one side scores above or below 20 of 40 by guessing alone, so the 25-of-40 line is no longer exactly a 4% chance.
+  Checked for every budget (expected score of a guesser with the viewer's own left rate, from `trials.json` and `answers.csv`):
+  - the passes that set the ceilings scored close to what that guesser would expect, and the bias pushed their scores up, not down (Cb/Cr 4: 24 against 22.0; Y 3: 24 against 21.8; RGB 2: 20 against 20.0; `final_check2`: 24 against 20.0);
+  - the failures that bound them happened where the bias pushed scores down (Cb/Cr 8: 26 against 19.2; Y 4: 26 against 19.6; RGB 4: 33 against 22.0), so they would fail without it too.
+  The one result the imbalance could have tipped is Cb/Cr 12's narrow failure (26 against 21.8), which is not on the path to any ceiling.
+  The builder now puts exactly half of each budget's trials on each side, in random order.
 
 ## Open
 

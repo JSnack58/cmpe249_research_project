@@ -76,16 +76,20 @@ def make_session(
         ]
         if len(plates) < n_trials:
             raise ValueError(f"{b.ladder}/{b.rung}: only {len(plates)} plates, need {n_trials}")
-        # Each budget draws its own plates, so the viewer can't learn a plate across budgets.
+        # Each budget draws its own plates (a plate can recur under another budget, with new noise).
         rng = random.Random(f"{seed}:{b.ladder}:{b.rung}")
-        for image_id, idx in rng.sample(plates, n_trials):
+        # Exactly half the trials attacked on each side, in random order: with unbalanced sides a
+        # viewer who leans to one side would score above 50% by guessing alone.
+        sides = [SIDES[i % 2] for i in range(n_trials)]
+        rng.shuffle(sides)
+        for (image_id, idx), side in zip(rng.sample(plates, n_trials), sides, strict=True):
             trials.append(
                 {
                     "ladder": b.ladder,
                     "rung": b.rung,
                     "image_id": image_id,
                     "plate_idx": idx,
-                    "attacked": rng.choice(SIDES),
+                    "attacked": side,
                     "_adv_dir": adv_dir,
                     "_cfg": b.cfg,
                 }
@@ -327,6 +331,9 @@ function show(state) {
     $("note").textContent = "You can close this tab and stop the server (Ctrl+C).";
     return;
   }
+  // No answers until the new pair is on screen: a key pressed while it loads would answer a
+  // pair the viewer never saw.
+  busy = true; setButtons(false);
   current = state.trial.id;
   $("progress").textContent = `Trial ${state.answered + 1} of ${state.total}`;
   // Show the pair only once both crops have loaded, so neither appears first.
@@ -340,12 +347,21 @@ function setButtons(on) { $("b-left").disabled = !on; $("b-right").disabled = !o
 async function choose(choice) {
   if (busy || !current) return;
   busy = true; setButtons(false);
-  const r = await fetch("/answer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ trial: current, choice }),
-  });
-  show(await r.json());
+  try {
+    const r = await fetch("/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trial: current, choice }),
+    });
+    show(await r.json());
+  } catch (err) {
+    unreachable();
+  }
+}
+function unreachable() {
+  $("pair").hidden = true;
+  $("progress").textContent = "The eye-test server is not reachable.";
+  $("note").textContent = "Start it again, then reload this page; answers so far are saved.";
 }
 $("b-left").onclick = () => choose("left");
 $("b-right").onclick = () => choose("right");
@@ -354,7 +370,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "2" || e.key === "ArrowRight") choose("right");
 });
 setButtons(false);
-fetch("/next").then((r) => r.json()).then(show);
+fetch("/next").then((r) => r.json()).then(show).catch(unreachable);
 </script>
 </body>
 </html>

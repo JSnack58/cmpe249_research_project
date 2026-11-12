@@ -86,8 +86,8 @@ def test_session_has_n_trials_per_budget_and_balanced_sides(session):
         mine = [x for x in t if x["rung"] == rung]
         assert len(mine) == 20
         assert len({(x["image_id"], x["plate_idx"]) for x in mine}) == 20  # no plate twice
-        left = sum(x["attacked"] == "left" for x in mine)
-        assert 0.3 * 20 <= left <= 0.7 * 20
+        # Exactly half per side: a viewer who leans to one side then still scores 50% by guessing.
+        assert sum(x["attacked"] == "left" for x in mine) == 10
     # Budgets are interleaved, so the viewer can't tell which budget a trial tests.
     assert [x["rung"] for x in t[:20]].count("cb12") not in (0, 20)
 
@@ -258,3 +258,71 @@ def test_an_idle_browser_connection_does_not_block_the_page(session):
     finally:
         idle.close()
         server.shutdown()
+
+
+# --- the page's own script, run under Node with a stand-in page --------------------------------
+
+PAGE_HARNESS = r"""
+const script = require("fs").readFileSync(0, "utf8");
+const el = () => ({ hidden: false, disabled: false, textContent: "", style: {}, set src(v) {} });
+const els = {};
+const listeners = {};
+const posts = [];
+let pendingImages = [];
+global.document = {
+  getElementById: (id) => {
+    if (!els[id]) {
+      els[id] = el();
+      if (id === "left" || id === "right") {
+        Object.defineProperty(els[id], "src", { set() { pendingImages.push(els[id]); } });
+      }
+    }
+    return els[id];
+  },
+  addEventListener: (type, fn) => { listeners[type] = fn; },
+};
+const state = (n) => ({ done: false, answered: n, total: 2,
+  trial: { id: `t00${n + 1}`, left: `/crop/t00${n + 1}/left`, right: `/crop/t00${n + 1}/right` } });
+global.fetch = async (url, opts) => {
+  if (url === "/answer") {
+    posts.push(JSON.parse(opts.body));
+    return { json: async () => state(1) };
+  }
+  return { json: async () => state(0) };
+};
+const tick = () => new Promise((r) => setTimeout(r, 0));
+const key = (k) => listeners.keydown({ key: k });
+(async () => {
+  eval(script);
+  await tick(); await tick();          // /next answered, crops requested but not loaded
+  key("1");                            // pressed while the pair is still hidden
+  await tick();
+  const early = posts.length;
+  pendingImages.splice(0).forEach((img) => img.onload());
+  await tick();
+  key("2");                            // pressed once the pair is shown
+  await tick(); await tick();
+  console.log(JSON.stringify({ early, posts }));
+})();
+"""
+
+
+def test_page_ignores_keys_until_the_pair_is_shown():
+    # A key pressed while the first trial's crops are still loading must not record an answer for
+    # a pair the viewer never saw.
+    import re
+    import shutil
+    import subprocess
+
+    from plate_cloak.visibility.eyetest import PAGE
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    (script,) = re.findall(r"<script>(.*?)</script>", PAGE, re.S)
+    out = subprocess.run(
+        [node, "-e", PAGE_HARNESS], input=script, capture_output=True, text=True, check=True
+    )
+    result = json.loads(out.stdout)
+    assert result["early"] == 0
+    assert result["posts"] == [{"trial": "t001", "choice": "right"}]
