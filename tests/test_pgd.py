@@ -103,8 +103,8 @@ def test_sobel_mask_is_not_silently_ignored():
 def test_topk_loss_sums_the_k_highest_scores():
     raw = torch.zeros(1, 5, 6)
     raw[0, 4] = torch.tensor([0.1, 0.9, 0.3, 0.8, 0.2, 0.0])
-    assert torch.isclose(topk_loss(raw, 2), torch.tensor(1.7))
-    assert torch.isclose(topk_loss(raw, 100), torch.tensor(2.3))  # k larger than A is fine
+    assert torch.isclose(topk_loss(raw[0, 4], 2), torch.tensor(1.7))
+    assert torch.isclose(topk_loss(raw[0, 4], 100), torch.tensor(2.3))  # k larger than A is fine
 
 
 def test_hinge_loss_counts_only_plate_candidates_above_the_floor():
@@ -112,8 +112,8 @@ def test_hinge_loss_counts_only_plate_candidates_above_the_floor():
     raw[0, 4] = torch.tensor([0.5, 0.05, 0.9, 0.3])
     on_plate = torch.tensor([True, True, False, True])
     # 0.5 -> 0.4, 0.05 is below the floor, 0.9 is off the plate, 0.3 -> 0.2
-    assert torch.isclose(hinge_loss(raw, 0.1, on_plate), torch.tensor(0.6))
-    assert torch.isclose(hinge_loss(raw, 0.1, None), torch.tensor(1.4))
+    assert torch.isclose(hinge_loss(raw[0, 4], 0.1, on_plate), torch.tensor(0.6))
+    assert torch.isclose(hinge_loss(raw[0, 4], 0.1, None), torch.tensor(1.4))
 
 
 def test_anchors_on_plates_needs_real_overlap():
@@ -157,7 +157,7 @@ def test_pgd_lowers_loss_and_stays_on_plates(space):
     x, boxes = fixture_image_with_plate()
     net = TinyDetector()
     adv = pgd([net], x, boxes, settings(space=space))
-    assert topk_loss(raw_of(net, adv), 100) < topk_loss(raw_of(net, x), 100)
+    assert topk_loss(raw_of(net, adv)[0, 4], 100) < topk_loss(raw_of(net, x)[0, 4], 100)
     outside = 1 - plate_mask(*x.shape[-2:], boxes, 0.10)
     assert ((adv - x).abs() * outside).max() == 0
     assert adv.min() >= 0 and adv.max() <= 1
@@ -171,7 +171,7 @@ def test_pgd_with_hinge_loss_lowers_it():
     def hinge(img):
         left, _, top, _ = predict_padding(*img.shape[-2:])
         raw = raw_of(net, img)
-        return hinge_loss(raw, 0.1, anchors_on_plates(raw, boxes + [left, top, left, top]))
+        return hinge_loss(raw[0, 4], 0.1, anchors_on_plates(raw, boxes + [left, top, left, top]))
 
     assert hinge(adv) < hinge(x)
 
@@ -227,7 +227,7 @@ def test_defaults_reproduce_plain_pgd():
         delta.requires_grad_(True)
         adv = _apply(x, delta, s.space)
         raw = net(F.pad(adv, (left, right, top, bottom), value=PAD_VALUE))[0]
-        (grad,) = torch.autograd.grad(topk_loss(raw, s.loss.k), delta)
+        (grad,) = torch.autograd.grad(topk_loss(raw[0, 4], s.loss.k), delta)
         with torch.no_grad():
             delta = _project(x, delta - step * grad.sign(), bound, s.space)
     expected = _apply(x, delta.detach(), s.space)
@@ -239,7 +239,7 @@ def test_ensemble_lowers_every_members_loss():
     nets = [TinyDetector(0), TinyDetector(1)]
     adv = pgd(nets, x, boxes, settings())
     for net in nets:
-        assert topk_loss(raw_of(net, adv), 100) < topk_loss(raw_of(net, x), 100)
+        assert topk_loss(raw_of(net, adv)[0, 4], 100) < topk_loss(raw_of(net, x)[0, 4], 100)
 
 
 def test_ensemble_normalizes_each_member():
@@ -257,7 +257,7 @@ def test_momentum_changes_the_path_and_keeps_the_budget():
     plain = pgd([net], x, boxes, settings(momentum=0.0))
     mom = pgd([net], x, boxes, settings(momentum=1.0))
     assert not torch.equal(plain, mom)
-    assert topk_loss(raw_of(net, mom), 100) < topk_loss(raw_of(net, x), 100)
+    assert topk_loss(raw_of(net, mom)[0, 4], 100) < topk_loss(raw_of(net, x)[0, 4], 100)
     outside = 1 - plate_mask(*x.shape[-2:], boxes, 0.10)
     assert ((mom - x).abs() * outside).max() == 0
     assert (mom - x).abs().max() <= 8 / 255 + 1e-6
@@ -348,3 +348,32 @@ def test_to_uint8_rounds_to_the_nearest_level():
     u8 = to_uint8(x)
     assert u8.shape == (1, 5, 3) and u8.dtype == np.uint8
     assert u8[0, :, 0].tolist() == [0, 0, 1, 255, 255]
+
+
+# SHA-256 of pgd's output on CPU, recorded from milestone 2a's code before the per-family views
+# (milestone 2b) were added. YOLOv8 attacks must not change, or every cached attack would be a
+# different attack under the same fingerprint. Tied to this environment's torch build.
+DETECT_PATH_HASHES = {
+    "ycbcr": "2550ef0ccee42749a37ac82a88c48f2a05fa0ca3669ee4e8041561ee47297498",
+    "ensemble_di_mi": "9d5749e1eb4d169843878d05cf28651806ff5c001c671150ce1e856577eeae9a",
+    "hinge_rgb": "cf7ae0ce934eb4f7742260163eb996f47d38dadea4befb4f816c1491cd997edb",
+}
+
+
+def test_pgd_detect_path_is_unchanged():
+    import hashlib
+
+    x, boxes = fixture_image_with_plate()
+    cases = {
+        "ycbcr": pgd([TinyDetector()], x, boxes, settings(space="ycbcr", steps=10)),
+        "ensemble_di_mi": pgd(
+            [TinyDetector(0), TinyDetector(1)],
+            x,
+            boxes,
+            settings(space="ycbcr", steps=10, momentum=1.0, diversity_p=0.5),
+            generator=gen(3),
+        ),
+        "hinge_rgb": pgd([TinyDetector()], x, boxes, settings(space="rgb", steps=10, loss="hinge")),
+    }
+    got = {k: hashlib.sha256(v.numpy().tobytes()).hexdigest() for k, v in cases.items()}
+    assert got == DETECT_PATH_HASHES

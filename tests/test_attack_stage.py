@@ -160,7 +160,7 @@ def test_cache_from_other_weights_is_refused(tmp_path, fake_surrogate, monkeypat
 def test_budget_violation_is_never_marked_done(tmp_path, fake_surrogate, monkeypatch):
     cfg = tiny_cfg(tmp_path)
 
-    def bad_pgd(nets, x, boxes, s, generator=None):
+    def bad_pgd(nets, x, boxes, s, generator=None, views=None):
         return (x + 5 / 255).clamp(0, 1)  # moves Y by 5/255 everywhere: over the Y budget of 2
 
     monkeypatch.setattr(stage, "pgd", bad_pgd)

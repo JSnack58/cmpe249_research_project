@@ -53,3 +53,68 @@ class Scaled(nn.Module):
     def forward(self, x):
         y, extra = self.inner(x)
         return torch.cat([y[:, :4], y[:, 4:] * self.factor], dim=1), extra
+
+
+class _Scorer(nn.Module):
+    """A small conv net: one plate logit per 8 x 8 cell, so scores depend on the pixels."""
+
+    def __init__(self, seed: int):
+        super().__init__()
+        torch.manual_seed(seed)
+        self.net = nn.Sequential(
+            nn.Conv2d(3, 8, 3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(8, 1, 3, stride=4, padding=1),
+        )
+
+    def forward(self, x):
+        return self.net(x).flatten(1) + 2.0  # (1, A) logits, fairly confident at the start
+
+
+class _EndToEndHead(nn.Module):
+    end2end = True
+
+
+class FakeEndToEnd(nn.Module):
+    """Stand-in for YOLOv10's eval-mode output: (top-300 table, raw dict).
+
+    The raw dict holds the one-to-one head's logits as (1, 1, A). The table's row 4 (what the
+    YOLOv8 reading takes) is a constant 0.5, so reading the wrong tensor gives different numbers.
+    `model[-1]` is the head with `end2end = True`, as in an Ultralytics DetectionModel.
+    """
+
+    def __init__(self, seed: int = 0):
+        super().__init__()
+        self.scorer = _Scorer(seed)
+        self.model = nn.ModuleList([self.scorer, _EndToEndHead()])
+        self.eval()
+
+    def forward(self, x):
+        assert x.shape[-2] % 32 == 0 and x.shape[-1] % 32 == 0, x.shape
+        logits = self.scorer(x)
+        table = torch.full((1, 300, 6), 0.5)
+        one2one = {"boxes": torch.zeros(1, 4, logits.shape[1]), "scores": logits[:, None]}
+        return table, {"one2one": one2one, "one2many": one2one}
+
+
+class FakeRTDETR(nn.Module):
+    """Stand-in for RT-DETR's eval-mode output: (top-300 table, decoder outputs).
+
+    The decoder outputs are (dec_bboxes, dec_scores, enc_bboxes, enc_scores, dn_meta) with
+    dec_scores as (layers=1, batch=1, queries, classes=1) logits. It insists on a square input,
+    like RT-DETR's predictor, and its table row 4 is a constant 0.5.
+    """
+
+    def __init__(self, seed: int = 0):
+        super().__init__()
+        self.scorer = _Scorer(seed)
+        self.model = nn.ModuleList([self.scorer])
+        self.eval()
+
+    def forward(self, x):
+        assert x.shape[-2] == x.shape[-1], x.shape
+        logits = self.scorer(x)
+        q = logits.shape[1]
+        dec_scores = logits.reshape(1, 1, q, 1)
+        table = torch.full((1, 300, 6), 0.5)
+        return table, (torch.zeros(1, 1, q, 4), dec_scores, None, None, None)

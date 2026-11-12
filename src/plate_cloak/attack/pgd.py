@@ -29,9 +29,14 @@ from torch import Tensor, nn
 
 from plate_cloak.attack.colorspace import RGB_TO_YCBCR, YCBCR_TO_RGB, fit_to_gamut
 from plate_cloak.attack.losses import anchors_on_plates, hinge_loss, topk_loss
-
-STRIDE = 32  # YOLOv8's largest stride: its input sides must be multiples of this
-PAD_VALUE = 114 / 255  # the gray Ultralytics pads with at prediction time
+from plate_cloak.attack.views import (  # noqa: F401  (STRIDE and PAD_VALUE are re-exported)
+    PAD_VALUE,
+    STRIDE,
+    DetectView,
+    View,
+    predict_padding,
+    raw_detect,
+)
 
 
 @dataclass(frozen=True)
@@ -98,23 +103,13 @@ def plate_mask(h: int, w: int, boxes: np.ndarray, margin: float) -> Tensor:
     return mask
 
 
-def predict_padding(h: int, w: int) -> tuple[int, int, int, int]:
-    """(left, right, top, bottom) padding that Ultralytics' predict() adds to an h x w image.
-
-    It pads each side up to the next multiple of 32 and centers the image (LetterBox with
-    auto=True). The surrogate must see the same layout during the attack as at evaluation.
-    """
-    dw, dh = (-w) % STRIDE, (-h) % STRIDE
-    left, top = round(dw / 2 - 0.1), round(dh / 2 - 0.1)
-    return left, dw - left, top, dh - top
-
-
 def pgd(
     nets: Sequence[nn.Module],
     x: Tensor,
     boxes: np.ndarray,
     s: AttackSettings,
     generator: torch.Generator | None = None,
+    views: Sequence[View] | None = None,
 ) -> Tensor:
     """Run PGD against the surrogates `nets` and return the adversarial image in [0, 1].
 
@@ -124,6 +119,8 @@ def pgd(
     clean image, so every surrogate counts equally however large its scores are.
     `generator` (on the CPU) drives input diversity and is required when it is on; seed it per
     image so an interrupted run redoes an image with the same draws.
+    `views` says how each surrogate is fed and where its plate scores are (see views.py); None
+    means YOLOv8's Detect head for every surrogate, the only case before milestone 2b.
     The start is zero noise. On CPU the result is deterministic; on GPU cuDNN's backward pass is
     not, and a tiny gradient difference can flip a pixel's step (see experiment-decisions.md).
     """
@@ -138,36 +135,45 @@ def pgd(
             raise ValueError("input diversity needs a generator (seed it per image)")
         if s.loss.type != "topk":
             raise ValueError("input diversity moves the plates, so it cannot be used with hinge")
+    views = [DetectView() for _ in nets] if views is None else list(views)
+    if len(views) != len(nets):
+        raise ValueError(f"pgd() got {len(nets)} surrogates but {len(views)} views")
+    if s.loss.type == "hinge" and not all(v.supports_hinge for v in views):
+        raise ValueError("the hinge loss needs per-candidate boxes, which only YOLOv8's view has")
 
     eps = s.eps.to(x).view(1, 3, 1, 1)
     bound = _bound(x, boxes, s)
     step = s.step_factor * eps / s.steps
-    padding = predict_padding(*x.shape[-2:])
-    left, _, top, _ = padding
-    boxes_padded = np.asarray(boxes, dtype=np.float64).reshape(-1, 4) + [left, top, left, top]
+    h, w = x.shape[-2:]
+    plates = [v.plates_to_input(boxes, h, w) for v in views]
+
+    def loss_of(i: int, img: Tensor) -> Tensor:
+        output = nets[i](img)
+        return _loss(views[i].scores(output), output, plates[i], s.loss)
 
     with torch.no_grad():  # each surrogate's loss on the clean image, the scale of its loss
-        clean = F.pad(x, padding, value=PAD_VALUE)
-        scale = [_loss(_raw(net(clean)), boxes_padded, s.loss).clamp_min(1e-12) for net in nets]
+        scale = [loss_of(i, v.prepare(x)).clamp_min(1e-12) for i, v in enumerate(views)]
 
     delta = torch.zeros_like(x)
     velocity = torch.zeros_like(x)
     for _ in range(s.steps):
         with torch.enable_grad():  # works even if the caller is inside torch.no_grad()
             delta.requires_grad_(True)
-            seen = F.pad(_apply(x, delta, s.space), padding, value=PAD_VALUE)
-            if s.diversity_p > 0:
-                seen = diverse(seen, s.diversity_p, s.diversity_min_scale, generator)
+            adv = _apply(x, delta, s.space)
+            # One input per layout per step: surrogates that see the same layout share one input
+            # diversity draw, as the whole ensemble did before views existed (milestone 2a).
+            seen: dict[str, Tensor] = {}
+            for v in views:
+                if v.layout not in seen:
+                    seen[v.layout] = _seen(v, adv, s, generator)
             # Each surrogate's gradient is taken on its raw loss and scaled afterwards. Scaling
             # the loss instead would scale every number in the backward pass, and float rounding
             # then flips the sign of near-zero entries, so even one surrogate would no longer
             # reproduce milestone 1's steps exactly.
             grad = sum(
-                torch.autograd.grad(
-                    _loss(_raw(net(seen)), boxes_padded, s.loss), delta, retain_graph=True
-                )[0]
-                / c
-                for net, c in zip(nets, scale, strict=True)
+                torch.autograd.grad(loss_of(i, seen[views[i].layout]), delta, retain_graph=True)[0]
+                / scale[i]
+                for i in range(len(nets))
             ) / len(nets)
         with torch.no_grad():
             # Momentum: the gradient scaled to mean size 1, added to the decayed running sum.
@@ -175,6 +181,14 @@ def pgd(
             delta = _project(x, delta - step * velocity.sign(), bound, s.space)
     with torch.no_grad():
         return _apply(x, delta, s.space)
+
+
+def _seen(view: View, adv: Tensor, s: AttackSettings, generator) -> Tensor:
+    """What one surrogate sees this step: the prepared image, with input diversity if on."""
+    seen = view.prepare(adv)
+    if s.diversity_p > 0:
+        seen = diverse(seen, s.diversity_p, s.diversity_min_scale, generator)
+    return seen
 
 
 def diverse(x: Tensor, p: float, min_scale: float, generator: torch.Generator) -> Tensor:
@@ -264,14 +278,9 @@ def _project(x: Tensor, delta: Tensor, bound: Tensor, space: str) -> Tensor:
     return delta * fit_to_gamut(x, delta)
 
 
-def _raw(output) -> Tensor:
-    """The (1, 5, A) prediction tensor from a Detect head's eval-mode output."""
-    return output[0] if isinstance(output, tuple | list) else output
-
-
-def _loss(raw: Tensor, boxes_padded: np.ndarray, loss: LossSettings) -> Tensor:
+def _loss(scores: Tensor, output, plates: np.ndarray, loss: LossSettings) -> Tensor:
     if loss.type == "topk":
-        return topk_loss(raw, loss.k)
-    if loss.type == "hinge":
-        return hinge_loss(raw, loss.floor, anchors_on_plates(raw, boxes_padded))
+        return topk_loss(scores, loss.k)
+    if loss.type == "hinge":  # YOLOv8 only (checked in pgd): needs each candidate's box
+        return hinge_loss(scores, loss.floor, anchors_on_plates(raw_detect(output), plates))
     raise ValueError(f"unknown attack.loss.type {loss.type!r}; options: topk, hinge")

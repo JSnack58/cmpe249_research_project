@@ -94,6 +94,7 @@ def run_attack(cfg: DictConfig) -> Path:
     s = AttackSettings.from_cfg(cfg.attack)
     device = torch.device(cfg.device)
     nets = [net.to(device) for net in load_surrogates(cfg)]
+    views = surrogate_views(cfg, nets)
     rows = []
     bar = Progress(len(ids), "attack")
     for image_id in ids:
@@ -103,7 +104,7 @@ def run_attack(cfg: DictConfig) -> Path:
         if png.exists():  # finished before an interruption
             adv = np.array(Image.open(png).convert("RGB"))
         else:
-            adv = _attack_one(nets, clean, ev.boxes, s, cfg.seed, image_id, device)
+            adv = _attack_one(nets, views, clean, ev.boxes, s, cfg.seed, image_id, device)
             _save_png(adv, png)
         rows.append({"image_id": image_id, **audit(clean, adv)})
         bar.update()
@@ -141,6 +142,16 @@ def load_surrogates(cfg: DictConfig) -> list[torch.nn.Module]:
     return nets
 
 
+def surrogate_views(cfg: DictConfig, nets: list[torch.nn.Module]) -> list:
+    """How PGD feeds each surrogate and reads its plate scores (see attack/views.py)."""
+    from plate_cloak.attack.views import view_for
+
+    return [
+        view_for(m.name, net, cfg.data.imgsz)
+        for m, net in zip(cfg.models.surrogates, nets, strict=True)
+    ]
+
+
 def weights_digests(cfg: DictConfig) -> dict[str, str]:
     """SHA-256 of each surrogate's weights file, keyed "<name>_s<seed>", so a retrained model
     can't reuse an old cache."""
@@ -165,13 +176,14 @@ def image_seed(seed: int, image_id: str) -> int:
     return int.from_bytes(hashlib.sha256(f"{seed}:{image_id}".encode()).digest()[:8], "big")
 
 
-def _attack_one(nets, clean_u8, boxes, s: AttackSettings, seed, image_id, device) -> np.ndarray:
+def _attack_one(
+    nets, views, clean_u8, boxes, s: AttackSettings, seed, image_id, device
+) -> np.ndarray:
     x = torch.from_numpy(clean_u8).permute(2, 0, 1)[None].float().div(255).to(device)
     if s.method == "pgd":
         # Input diversity draws on the CPU from a per-image seed, so the order never matters.
-        adv = pgd(
-            nets, x, boxes, s, generator=torch.Generator().manual_seed(image_seed(seed, image_id))
-        )
+        generator = torch.Generator().manual_seed(image_seed(seed, image_id))
+        adv = pgd(nets, x, boxes, s, generator=generator, views=views)
     elif s.method == "random":
         generator = torch.Generator(device=device).manual_seed(image_seed(seed, image_id))
         adv = random_sign_noise(x, boxes, s, generator)

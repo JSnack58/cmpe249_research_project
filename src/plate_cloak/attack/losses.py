@@ -13,24 +13,23 @@ import torch
 from torch import Tensor
 
 
-def topk_loss(raw: Tensor, k: int) -> Tensor:
+def topk_loss(scores: Tensor, k: int) -> Tensor:
     """Sum of the k highest plate scores (Spike 01's loss).
 
     Pushing down only the top candidates spends the attack where NMS would find a detection,
     instead of on thousands of background candidates that are already near 0.
     """
-    scores = raw[0, 4]
     return scores.topk(min(k, scores.numel())).values.sum()
 
 
-def hinge_loss(raw: Tensor, floor: float, plate_mask_anchors: Tensor | None) -> Tensor:
+def hinge_loss(scores: Tensor, floor: float, plate_mask_anchors: Tensor | None) -> Tensor:
     """Sum of how far each candidate's score sits above `floor`, over the selected candidates.
 
     Candidates already below `floor` contribute 0 (and no gradient), so the attack stops spending
     effort on them. `plate_mask_anchors` is a (A,) bool tensor that limits the loss to candidates
     on a plate (see anchors_on_plates); None uses every candidate.
     """
-    excess = (raw[0, 4] - floor).clamp(min=0)
+    excess = (scores - floor).clamp(min=0)
     if plate_mask_anchors is not None:
         excess = excess[plate_mask_anchors]
     return excess.sum()
