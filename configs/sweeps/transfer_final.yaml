@@ -1,0 +1,36 @@
+# Final transfer run on the test set, once (milestone 2a, spec 2026-11-10 section 5, step 5).
+# The attack chosen on validation (configs/sweeps/transfer_dev.yaml, ens_di_mi) at the budget
+# that passed its own eye test (final_check2: Y 2, Cb/Cr 4), and the same attack at the RGB
+# ceiling (RGB 2) as the comparison. Every test image and every target, RT-DETR included.
+# The transfer gate and the H1 verdict are read from the ycbcr variant.
+#
+#   ./run_ablations.sh configs/sweeps/transfer_final.yaml
+
+id: transfer_final
+
+overrides:
+  data.split: test
+  attack.method: pgd
+  attack.diversity.p: 0.5
+  attack.momentum: 1.0
+  models.surrogates:
+    - {name: yolov8s, seed: 0}
+    - {name: yolov8n, seed: 0}
+    - {name: yolov8l, seed: 0}
+  # base.yaml's nine targets, plus the other two surrogates as white-box rows.
+  models.targets:
+    - {name: yolov8s, seed: 0}
+    - {name: yolov8s, seed: 1}
+    - {name: yolov8s, seed: 2}
+    - {name: yolov10l, seed: 0}
+    - {name: yolov10l, seed: 1}
+    - {name: yolov10l, seed: 2}
+    - {name: rtdetr-l, seed: 0}
+    - {name: rtdetr-l, seed: 1}
+    - {name: rtdetr-l, seed: 2}
+    - {name: yolov8n, seed: 0}
+    - {name: yolov8l, seed: 0}
+
+variants:
+  ycbcr: {attack.space: ycbcr, attack.eps.y: 2, attack.eps.cb: 4, attack.eps.cr: 4}
+  rgb: {attack.space: rgb, attack.eps.rgb: 2}

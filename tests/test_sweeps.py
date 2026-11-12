@@ -230,3 +230,41 @@ def test_transfer_dev_step_down_lowers_only_y_to_the_rung_below_the_ceiling():
     assert {k for k in fa if fa[k] != fb[k]} == {"attack.eps.y"}
     a = load_config(TRANSFER_DEV, variant="ens_di_mi_y2").attack
     assert (a.eps.y, a.eps.cb, a.eps.cr) == (2, 4, 4)
+
+
+TRANSFER_FINAL = CONFIG_DIR / "sweeps" / "transfer_final.yaml"
+
+
+def test_transfer_final_is_the_checked_attack_on_the_test_set_with_every_target():
+    assert variants(TRANSFER_FINAL) == ["ycbcr", "rgb"]
+    base = load_config(BASE_CONFIG)
+    checked = load_config(TRANSFER_DEV, variant="ens_di_mi_y2").attack  # passed final_check2
+    for v in variants(TRANSFER_FINAL):
+        cfg = load_config(TRANSFER_FINAL, variant=v)
+        assert cfg.data.split == "test" and cfg.data.n_eval is None, v  # every test image, once
+        assert [dict(m) for m in cfg.models.surrogates] == ENSEMBLE, v
+        targets = [dict(t) for t in cfg.models.targets]
+        assert targets == [*map(dict, base.models.targets), *ENSEMBLE[1:]], v  # with RT-DETR
+        a = cfg.attack
+        same = (a.method, a.steps, a.momentum, a.diversity.p, a.diversity.min_scale, a.loss.type)
+        assert same == (
+            checked.method,
+            checked.steps,
+            checked.momentum,
+            checked.diversity.p,
+            checked.diversity.min_scale,
+            checked.loss.type,
+        ), v
+    ycbcr = load_config(TRANSFER_FINAL, variant="ycbcr").attack
+    assert ycbcr.space == "ycbcr"
+    assert (ycbcr.eps.y, ycbcr.eps.cb, ycbcr.eps.cr) == (
+        checked.eps.y,
+        checked.eps.cb,
+        checked.eps.cr,
+    )
+    rgb = load_config(TRANSFER_FINAL, variant="rgb").attack
+    assert (rgb.space, rgb.eps.rgb) == ("rgb", base.attack.eps.rgb)  # the frozen RGB ceiling, 2
+    # Budgets are written into the file, not inherited from base.yaml.
+    raw = yaml.safe_load(TRANSFER_FINAL.read_text())["variants"]
+    assert {"attack.space", "attack.eps.y", "attack.eps.cb", "attack.eps.cr"} <= raw["ycbcr"].keys()
+    assert {"attack.space", "attack.eps.rgb"} <= raw["rgb"].keys()
