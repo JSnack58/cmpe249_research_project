@@ -5,18 +5,19 @@ keeps. Both differ by family, in the installed Ultralytics (8.4.178):
 
 - YOLOv8 (`DetectView`): predict() pads the image to a multiple of 32; the eval output is
   (y, raw) with y of shape (1, 4 + classes, anchors), already sigmoid, row 4 the plate score.
-- YOLOv10 (`EndToEndView`): the same padding, but an end-to-end head whose eval output is
-  (top-300 table, raw dict). The table is already top-k selected; the per-anchor plate logits are
-  the one-to-one head's `scores`, shaped (1, classes, anchors).
+- YOLOv10: our fine-tuned checkpoints load with `end2end = False`, so predict() fuses the model,
+  drops the one-to-one head and runs the one-to-many head with NMS, exactly like YOLOv8; the
+  unfused network's eval output is that same one-to-many output. So YOLOv10 gets `DetectView`.
+  A YOLOv10 with `end2end = True` would return a top-300 table first instead, and is refused.
 - RT-DETR (`RTDETRView`): predict() stretches the image to an imgsz x imgsz square
   (scale_fill); the eval output is (top-300 table, (dec_bboxes, dec_scores, enc_bboxes,
   enc_scores, dn_meta)) with dec_scores the last decoder layer's logits, (1, batch, queries,
   classes).
 
-Reading element 0 of the end-to-end and RT-DETR outputs as if it were YOLOv8's layout does not
-fail: it quietly optimizes a few numbers of the top-k table, and the model looks robust. Each view
-therefore reads its own family's raw scores, before the head's own top-k, which is the set the
-evaluation's detections are taken from.
+Reading element 0 of RT-DETR's (or an end-to-end YOLOv10's) output as if it were YOLOv8's layout
+does not fail: it quietly optimizes a few numbers of the top-k table, and the model looks robust.
+Each view therefore reads its own family's raw scores, before any top-k, which is the set the
+evaluation's detections are taken from (checked against predict() in tests/test_views_real.py).
 """
 
 from __future__ import annotations
@@ -74,15 +75,6 @@ class DetectView:
         return raw_detect(output)[0, 4]
 
 
-class EndToEndView(DetectView):
-    """YOLOv10's end-to-end head: YOLOv8's input layout, scores from the one-to-one head."""
-
-    supports_hinge = False
-
-    def scores(self, output) -> Tensor:
-        return output[1]["one2one"]["scores"][0, PLATE].sigmoid()
-
-
 class RTDETRView:
     """RT-DETR: the image stretched to an imgsz x imgsz square, scores from the decoder."""
 
@@ -107,13 +99,18 @@ class RTDETRView:
 
 
 def view_for(name: str, net: nn.Module, imgsz: int) -> View:
-    """The view for a zoo model. YOLOv10 is in the `yolo` family, so its head decides."""
+    """The view for a zoo model; refuses a YOLO head in end-to-end mode (see the module notes)."""
     from plate_cloak.models.zoo import spec
 
     if spec(name).family == "rtdetr":
         return RTDETRView(imgsz)
     head = net.model[-1] if hasattr(net, "model") else None
-    return EndToEndView() if getattr(head, "end2end", False) else DetectView()
+    if getattr(head, "end2end", False):
+        raise NotImplementedError(
+            f"{name} has an end-to-end head; its eval output is a top-k table, not per-anchor "
+            "scores, and no view reads it yet"
+        )
+    return DetectView()
 
 
 def raw_detect(output) -> Tensor:

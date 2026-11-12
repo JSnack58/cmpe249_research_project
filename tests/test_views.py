@@ -8,15 +8,7 @@ from test_pgd import fixture_image_with_plate, settings
 
 from plate_cloak.attack.losses import topk_loss
 from plate_cloak.attack.pgd import pgd, predict_padding
-from plate_cloak.attack.views import DetectView, EndToEndView, RTDETRView, view_for
-
-
-def test_end_to_end_view_reads_one2one_scores():
-    net, x = FakeEndToEnd(), torch.rand(1, 3, 64, 96)
-    out = net(x)
-    scores = EndToEndView().scores(out)
-    assert torch.allclose(scores, out[1]["one2one"]["scores"][0, 0].sigmoid())
-    assert not torch.allclose(scores[:6], out[0][0, 4])  # the YOLOv8 reading of the table
+from plate_cloak.attack.views import DetectView, RTDETRView, view_for
 
 
 def test_rtdetr_view_reads_last_decoder_layer():
@@ -44,21 +36,23 @@ def test_detect_view_pads_like_predict():
     assert np.allclose(plates, [[10 + left, 20 + top, 30 + left, 40 + top]])
 
 
-def test_view_for_picks_by_head_not_zoo_family():
-    # YOLOv10l is family "yolo" in the zoo, but its head is end-to-end.
-    assert isinstance(view_for("yolov10l", FakeEndToEnd(), 640), EndToEndView)
+def test_view_for_picks_by_family_and_refuses_an_end_to_end_head():
+    # Our YOLOv10l checkpoints are not end-to-end (predict() runs them with NMS, like YOLOv8),
+    # but one that is would return a top-k table first: reading it as YOLOv8's layout is silent.
+    assert isinstance(view_for("yolov10l", TinyDetector(), 640), DetectView)
     assert isinstance(view_for("yolov8s", TinyDetector(), 640), DetectView)
     assert isinstance(view_for("rtdetr-l", FakeRTDETR(), 640), RTDETRView)
+    with pytest.raises(NotImplementedError, match="end-to-end"):
+        view_for("yolov10l", FakeEndToEnd(), 640)
 
 
 @pytest.mark.parametrize(
     ("net", "view"),
     [
         (TinyDetector(), DetectView()),
-        (FakeEndToEnd(), EndToEndView()),
         (FakeRTDETR(), RTDETRView(256)),
     ],
-    ids=["detect", "end2end", "rtdetr"],
+    ids=["detect", "rtdetr"],
 )
 def test_pgd_lowers_the_score_each_view_reads(net, view):
     x, boxes = fixture_image_with_plate()
@@ -75,4 +69,4 @@ def test_pgd_lowers_the_score_each_view_reads(net, view):
 def test_hinge_needs_a_view_that_supports_it():
     x, boxes = fixture_image_with_plate()
     with pytest.raises(ValueError, match="hinge"):
-        pgd([FakeEndToEnd()], x, boxes, settings(loss="hinge"), views=[EndToEndView()])
+        pgd([FakeRTDETR()], x, boxes, settings(loss="hinge"), views=[RTDETRView(256)])
