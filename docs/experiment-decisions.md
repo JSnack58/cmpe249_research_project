@@ -217,6 +217,13 @@ Each entry notes where it came from.
   Clean YOLOv10l mAP50 on validation: 0.965.
   The ens_mi attack ran once under a broken run name (a wrapped paste); its cached images were reused by the rerun, and the CLI now checks the name before attacking.
 
+- **Eye test `final_check`: the chosen attack failed at the ceiling; stepping down to Y 2, Cb/Cr 4 (2026-11-11, milestone 2a Task 12).**
+  40 trials on validation crops of `ens_di_mi` at Y 3, Cb/Cr 4: 28 of 40 correct (fail; a pass is 25 or fewer).
+  The budget held (largest pixel change 9, the same as plain PGD at Y 3, Cb/Cr 4), but the noise is coarser: a median 21% of its energy survives a 3-pixel blur, against 17% for plain PGD, and coarser patterns are easier to see.
+  By the spec, the attack steps down one rung and is checked again, without redoing the ablation.
+  The rung below the ceiling is Y 2, Cb/Cr 4: the ceiling was reached by raising Y from 2 to 3, and Cb/Cr 4 is already the bottom of its ladder (the plan's "one rung down the Cb/Cr ladder" did not fit this case).
+  Y 2, Cb/Cr 4 passed as plain PGD (`ceiling3`, 24 of 40); the new variant is `ens_di_mi_y2` in `configs/sweeps/transfer_dev.yaml`.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**

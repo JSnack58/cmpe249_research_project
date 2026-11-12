@@ -166,7 +166,14 @@ ENSEMBLE = [{"name": m, "seed": 0} for m in ("yolov8s", "yolov8n", "yolov8l")]
 
 
 def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
-    assert variants(TRANSFER_DEV) == ["ens", "ens_di", "ens_mi", "ens_di_mi", "ens_di_mi_100"]
+    assert variants(TRANSFER_DEV) == [
+        "ens",
+        "ens_di",
+        "ens_mi",
+        "ens_di_mi",
+        "ens_di_mi_100",
+        "ens_di_mi_y2",
+    ]
     base = load_config(BASE_CONFIG).attack.eps
     raw = yaml.safe_load(TRANSFER_DEV.read_text())
     for v in variants(TRANSFER_DEV):
@@ -182,7 +189,9 @@ def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
         ], v
         a = cfg.attack
         assert (a.method, a.space) == ("pgd", "ycbcr"), v
-        assert (a.eps.y, a.eps.cb, a.eps.cr) == (base.y, base.cb, base.cr), v  # frozen ceiling
+        # The frozen ceiling, except the step-down that the final eye test forced (checked below).
+        y = 2 if v == "ens_di_mi_y2" else base.y
+        assert (a.eps.y, a.eps.cb, a.eps.cr) == (y, base.cb, base.cr), v
     # The budget is written into the file, so a later base.yaml change cannot move it silently.
     shared = raw["overrides"]
     assert {"attack.eps.y", "attack.eps.cb", "attack.eps.cr", "attack.space"} <= shared.keys()
@@ -199,6 +208,7 @@ def test_transfer_dev_never_shows_rtdetr_and_uses_validation():
         "ens_mi": (0.0, 1.0),
         "ens_di_mi": (0.5, 1.0),
         "ens_di_mi_100": (0.5, 1.0),
+        "ens_di_mi_y2": (0.5, 1.0),
     }
 
 
@@ -210,3 +220,13 @@ def test_transfer_dev_100_step_rerun_changes_only_the_steps_of_the_winner():
     pair = ("ens_di_mi", "ens_di_mi_100")
     steps = [load_config(TRANSFER_DEV, variant=v).attack.steps for v in pair]
     assert steps == [40, 100]
+
+
+def test_transfer_dev_step_down_lowers_only_y_to_the_rung_below_the_ceiling():
+    # ens_di_mi failed its own eye test (final_check, 28 of 40); the rung below the frozen ceiling
+    # Y 3, Cb/Cr 4 is Y 2, Cb/Cr 4, which passed in ceiling3. The ablation is not redone.
+    fa = _flatten(load_config(TRANSFER_DEV, variant="ens_di_mi"))
+    fb = _flatten(load_config(TRANSFER_DEV, variant="ens_di_mi_y2"))
+    assert {k for k in fa if fa[k] != fb[k]} == {"attack.eps.y"}
+    a = load_config(TRANSFER_DEV, variant="ens_di_mi_y2").attack
+    assert (a.eps.y, a.eps.cb, a.eps.cr) == (2, 4, 4)

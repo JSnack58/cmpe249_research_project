@@ -1,0 +1,19 @@
+{
+  "budgets": {
+    "transfer_dev/ens_di_mi": {
+      "correct": 28,
+      "n": 40,
+      "complete": true,
+      "passed": false
+    }
+  },
+  "ladders": {
+    "transfer_dev": {
+      "rungs": [
+        "ens_di_mi"
+      ],
+      "ceiling": null,
+      "extend": "down"
+    }
+  }
+}

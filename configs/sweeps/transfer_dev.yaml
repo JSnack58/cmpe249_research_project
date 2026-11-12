@@ -41,3 +41,6 @@ variants:
   # The winner on YOLOv10l (0.085 [0.065, 0.104]) rerun with 100 steps; kept only if its drop beats
   # the winner's by more than the winner's CI half-width (0.020), so above 0.105.
   ens_di_mi_100: {attack.diversity.p: 0.5, attack.momentum: 1.0, attack.steps: 100}
+  # The chosen attack failed its own eye test at the ceiling (final_check, 28 of 40), so it steps
+  # down one rung to Y 2, Cb/Cr 4, which passed as plain PGD (ceiling3). No ablation rerun.
+  ens_di_mi_y2: {attack.diversity.p: 0.5, attack.momentum: 1.0, attack.eps.y: 2}
