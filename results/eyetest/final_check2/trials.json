@@ -1,0 +1,338 @@
+{
+ "seed": 42,
+ "n_per_budget": 40,
+ "budgets": [
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "eps": {
+    "y": 2,
+    "cb": 4,
+    "cr": 4
+   },
+   "size": 10
+  }
+ ],
+ "trials": [
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "bb09dda759bf5f42",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t001"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "3168f721ef150091",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t002"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "4c8bb70a5e3dc4cb",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t003"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "b91c3aaba25bf914",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t004"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "defd8f4b30b3e1e1",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t005"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "88df55ff4e13b90d",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t006"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "f767d0f809acae58",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t007"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "081f5a6bc61b9c48",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t008"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "d7b71c9fd144d58d",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t009"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "56eee01a07dd1c36",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t010"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "15a51e29f5ceffd8",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t011"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "003a5aaf6d17c917",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t012"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "008637722500f239",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t013"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "cb8c75fc1c7ccf73",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t014"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "1a3e9d87d733ff7f",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t015"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "a8260a5227c4858b",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t016"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "5b66429a5324f077",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t017"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "e79f6777f2fc08b2",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t018"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "8c37054110709b68",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t019"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "88d00df8bb9803d9",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t020"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "5fb888d79b551331",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t021"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "b85755d04ba47fe7",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t022"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "b19b0ed41580dafd",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t023"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "851915865432c9b9",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t024"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "ce97f7bc90e97109",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t025"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "0170ea8e1a33375a",
+   "plate_idx": 1,
+   "attacked": "right",
+   "id": "t026"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "251acac3adef34e6",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t027"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "c0f10539eeb3c7aa",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t028"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "54bd93e5a4de808a",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t029"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "d9fa2abf3719a4bd",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t030"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "0ee91c4938b6e7ee",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t031"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "2b8a135ba7dbdca8",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t032"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "0ee131f55fb5b7f2",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t033"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "12ab5414cca9ccb2",
+   "plate_idx": 1,
+   "attacked": "right",
+   "id": "t034"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "a21aa7c1d7b93d12",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t035"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "feaf383fc5de383f",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t036"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "55b40b0932e13653",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t037"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "12d3b6665f7e1cf6",
+   "plate_idx": 0,
+   "attacked": "left",
+   "id": "t038"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "30ac1866da2de326",
+   "plate_idx": 0,
+   "attacked": "right",
+   "id": "t039"
+  },
+  {
+   "ladder": "transfer_dev",
+   "rung": "ens_di_mi_y2",
+   "image_id": "1b3ec486a7f7f3db",
+   "plate_idx": 1,
+   "attacked": "left",
+   "id": "t040"
+  }
+ ]
+}
