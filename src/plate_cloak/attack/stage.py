@@ -43,9 +43,17 @@ AUDIT_COLUMNS = ["image_id", "R", "G", "B", "Y", "Cb", "Cr"]
 
 def fingerprint(cfg: DictConfig, image_ids: list[str]) -> str:
     """First 12 hex characters of a SHA-256 over everything that shapes the attacked pixels."""
-    relevant = {
+    blob = json.dumps(fingerprint_inputs(cfg, image_ids), sort_keys=True).encode()
+    return hashlib.sha256(blob).hexdigest()[:12]
+
+
+def fingerprint_inputs(cfg: DictConfig, image_ids: list[str]) -> dict:
+    """Everything the fingerprint covers. RT-DETR surrogates also record how their scores are
+    read, so a cache made by an earlier reading is never reused; YOLO entries are unchanged, so
+    their existing caches stay valid."""
+    return {
         "attack": attack_settings(cfg.attack),
-        "surrogates": [_name_seed(m) for m in cfg.models.surrogates],
+        "surrogates": [_surrogate_entry(m) for m in cfg.models.surrogates],
         "split": cfg.data.split,
         "imgsz": cfg.data.imgsz,
         "min_plate_w": cfg.data.min_plate_w,
@@ -53,8 +61,16 @@ def fingerprint(cfg: DictConfig, image_ids: list[str]) -> str:
         "seed": cfg.seed,
         "image_ids": list(image_ids),
     }
-    blob = json.dumps(relevant, sort_keys=True).encode()
-    return hashlib.sha256(blob).hexdigest()[:12]
+
+
+def _surrogate_entry(m) -> dict:
+    from plate_cloak.attack.views import RTDETRView
+    from plate_cloak.models.zoo import spec
+
+    entry = _name_seed(m)
+    if spec(m.name).family == "rtdetr":
+        entry["reads"] = RTDETRView.reads
+    return entry
 
 
 def attack_settings(attack: DictConfig) -> dict:

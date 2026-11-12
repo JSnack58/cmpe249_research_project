@@ -149,7 +149,7 @@ def pgd(
 
     def loss_of(i: int, img: Tensor) -> Tensor:
         output = nets[i](img)
-        return _loss(views[i].scores(output), output, plates[i], s.loss)
+        return _loss(views[i].attack_scores(output), output, plates[i], s.loss)
 
     with torch.no_grad():  # each surrogate's loss on the clean image, the scale of its loss
         scale = [loss_of(i, v.prepare(x)).clamp_min(1e-12) for i, v in enumerate(views)]

@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import Protocol
 
 import numpy as np
+import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
@@ -55,7 +56,12 @@ class View(Protocol):
         """Plate boxes (N, 4) x1, y1, x2, y2 on the h x w image -> the same boxes on the input."""
 
     def scores(self, output) -> Tensor:
-        """The network's eval-mode output -> (A,) plate confidence per candidate, differentiable."""
+        """The network's eval-mode output -> (A,) plate confidence per candidate, differentiable:
+        the candidates evaluation's detections are taken from."""
+
+    def attack_scores(self, output) -> Tensor:
+        """The scores the attack pushes down: `scores`, plus any earlier stage that decides which
+        candidates exist (RT-DETR's encoder proposals)."""
 
 
 class DetectView:
@@ -74,11 +80,17 @@ class DetectView:
     def scores(self, output) -> Tensor:
         return raw_detect(output)[0, 4]
 
+    def attack_scores(self, output) -> Tensor:
+        return self.scores(output)
+
 
 class RTDETRView:
     """RT-DETR: the image stretched to an imgsz x imgsz square, scores from the decoder."""
 
     supports_hinge = False
+    # What the attack reads, recorded in the cache fingerprint. "decoder" (the first reading,
+    # 2026-11-12) left the encoder's proposals alone and is never reused.
+    reads = "decoder+encoder"
 
     def __init__(self, imgsz: int):
         self.imgsz = imgsz
@@ -96,6 +108,13 @@ class RTDETRView:
     def scores(self, output) -> Tensor:
         dec_scores = output[1][1]
         return dec_scores[-1, 0, :, PLATE].sigmoid()
+
+    def attack_scores(self, output) -> Tensor:
+        # The encoder scores every location and its top 300 become the decoder's queries; the
+        # decoder only refines them. Pushing the decoder alone leaves a plate the encoder still
+        # proposes, and the next step's decoder finds it again (milestone 2b strength check).
+        enc_scores = output[1][3]  # (batch, queries, classes): the selected proposals' logits
+        return torch.cat([self.scores(output), enc_scores[0, :, PLATE].sigmoid()])
 
 
 def view_for(name: str, net: nn.Module, imgsz: int) -> View:

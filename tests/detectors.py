@@ -101,7 +101,8 @@ class FakeRTDETR(nn.Module):
     """Stand-in for RT-DETR's eval-mode output: (top-300 table, decoder outputs).
 
     The decoder outputs are (dec_bboxes, dec_scores, enc_bboxes, enc_scores, dn_meta) with
-    dec_scores as (layers=1, batch=1, queries, classes=1) logits. It insists on a square input,
+    dec_scores as (layers=1, batch=1, queries, classes=1) logits and enc_scores, the selected
+    proposals' encoder logits, as (batch=1, queries, classes=1). It insists on a square input,
     like RT-DETR's predictor, and its table row 4 is a constant 0.5.
     """
 
@@ -117,4 +118,5 @@ class FakeRTDETR(nn.Module):
         q = logits.shape[1]
         dec_scores = logits.reshape(1, 1, q, 1)
         table = torch.full((1, 300, 6), 0.5)
-        return table, (torch.zeros(1, 1, q, 4), dec_scores, None, None, None)
+        enc_scores = (logits - 1.0).reshape(1, q, 1)  # the encoder's proposal logits
+        return table, (torch.zeros(1, 1, q, 4), dec_scores, torch.zeros(1, q, 4), enc_scores, None)

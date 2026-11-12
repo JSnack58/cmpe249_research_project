@@ -70,3 +70,21 @@ def test_hinge_needs_a_view_that_supports_it():
     x, boxes = fixture_image_with_plate()
     with pytest.raises(ValueError, match="hinge"):
         pgd([FakeRTDETR()], x, boxes, settings(loss="hinge"), views=[RTDETRView(256)])
+
+
+def test_rtdetr_attack_scores_add_the_encoders_proposals():
+    # The decoder keeps refining whatever the encoder proposes, so pushing only the decoder's
+    # scores leaves plates the encoder still proposes (milestone 2b strength check, 2026-11-12).
+    net, x = FakeRTDETR(), torch.rand(1, 3, 64, 64)
+    out, view = net(x), RTDETRView(64)
+    expected = torch.cat([out[1][1][-1, 0, :, 0].sigmoid(), out[1][3][0, :, 0].sigmoid()])
+    assert torch.allclose(view.attack_scores(out), expected)
+    assert torch.allclose(
+        view.scores(out), out[1][1][-1, 0, :, 0].sigmoid()
+    )  # what evaluation keeps
+
+
+def test_detect_attack_scores_are_its_scores():
+    net, x = TinyDetector(), torch.rand(1, 3, 64, 64)
+    out = net(x)
+    assert torch.equal(DetectView().attack_scores(out), DetectView().scores(out))

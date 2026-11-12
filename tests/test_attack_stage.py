@@ -7,7 +7,7 @@ from PIL import Image
 
 import plate_cloak.attack.stage as stage
 from plate_cloak import cli
-from plate_cloak.attack.stage import fingerprint, image_seed, run_attack
+from plate_cloak.attack.stage import fingerprint, fingerprint_inputs, image_seed, run_attack
 from plate_cloak.config import BASE_CONFIG, load_config
 
 IDS = ["img_a", "img_b"]
@@ -213,3 +213,27 @@ def test_diversity_draws_depend_on_the_image_not_the_order(tmp_path, fake_surrog
     image_id = (alone / "audit.csv").read_text().splitlines()[1].split(",")[0]
     assert alone != both
     assert (alone / f"{image_id}.png").read_bytes() == (both / f"{image_id}.png").read_bytes()
+
+
+def test_fingerprint_records_how_rtdetr_scores_are_read():
+    # The milestone 2b strength check found that reading only RT-DETR's decoder left its
+    # encoder's proposals untouched; caches made that way must not be reused by the fixed attack.
+    from plate_cloak.attack.views import RTDETRView
+
+    rt = load_config(BASE_CONFIG, ["models.surrogates=[{name: rtdetr-l, seed: 0}]"])
+    assert fingerprint_inputs(rt, ["a"])["surrogates"] == [
+        {"name": "rtdetr-l", "seed": 0, "reads": RTDETRView.reads}
+    ]
+
+
+def test_yolo_fingerprints_are_unchanged_by_the_rtdetr_reading():
+    # Milestone 2a's final ycbcr run: its committed cache fingerprint must still be computed.
+    import json
+
+    from plate_cloak.config import CONFIG_DIR, resolve_path
+    from plate_cloak.data.eval_images import eval_image_ids
+
+    run = resolve_path("results/runs/transfer_final_ycbcr")
+    cfg = load_config(CONFIG_DIR / "sweeps" / "transfer_final.yaml", variant="ycbcr")
+    expected = json.loads((run / "metrics.json").read_text())["attack"]["fingerprint"]
+    assert fingerprint(cfg, eval_image_ids(cfg)) == expected
