@@ -58,3 +58,17 @@ No H1 verdict: this run lacks the CNN control or the Transformer.
 **Transfer gate not passed.** Drop(yolov10l) = 0.085 [0.065, 0.104] mAP50 (needs the whole CI at or above 0.35 for H1 to be testable).
 
 No H1 verdict: this run lacks the CNN control or the Transformer.
+
+## transfer_dev_ens_di_mi_100
+
+| Architecture | Seeds | Clean mAP50 | Attacked mAP50 | mAP50 drop | Drop range | Clean recall | Attacked recall |
+|---|---|---|---|---|---|---|---|
+| yolov8s s0 (white-box) | 0 | 0.968 [0.956, 0.978] | 0.676 [0.641, 0.710] | 0.292 [0.258, 0.324] | 0.292 to 0.292 | 0.967 [0.952, 0.979] | 0.580 [0.541, 0.619] |
+| yolov8n s0 (white-box) | 0 | 0.971 [0.960, 0.981] | 0.730 [0.696, 0.760] | 0.241 [0.211, 0.273] | 0.241 to 0.241 | 0.970 [0.955, 0.982] | 0.674 [0.638, 0.708] |
+| yolov8l s0 (white-box) | 0 | 0.961 [0.947, 0.973] | 0.699 [0.665, 0.731] | 0.262 [0.232, 0.292] | 0.262 to 0.262 | 0.962 [0.945, 0.976] | 0.656 [0.620, 0.691] |
+| yolov8s (retrained) | 1,2 | 0.970 [0.959, 0.980] | 0.853 [0.829, 0.876] | 0.118 [0.096, 0.139] | 0.118 to 0.118 | 0.970 [0.957, 0.981] | 0.822 [0.794, 0.848] |
+| yolov10l | 0,1,2 | 0.965 [0.952, 0.976] | 0.874 [0.851, 0.896] | 0.091 [0.070, 0.109] | 0.079 to 0.102 | 0.968 [0.955, 0.980] | 0.848 [0.822, 0.874] |
+
+**Transfer gate not passed.** Drop(yolov10l) = 0.091 [0.070, 0.109] mAP50 (needs the whole CI at or above 0.35 for H1 to be testable).
+
+No H1 verdict: this run lacks the CNN control or the Transformer.

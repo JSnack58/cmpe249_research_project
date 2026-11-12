@@ -148,6 +148,7 @@ Each entry notes where it came from.
   | RGB 12 | 0.942 | 0.045 |
 
   The ceilings come from the blind eye test (session `ceiling1`), not from LPIPS.
+  The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
 - **Eye test `ceiling1`: the Milestone 1 budgets were visible (2026-11-11, milestone 2a Task 10).**
   280 trials, 40 per rung, one viewer (the owner); a rung passes at 25 or fewer correct of 40.
   Correct picks of the attacked crop: Cb/Cr 12: 26, Cb/Cr 16: 23, Cb/Cr 20: 29, Cb/Cr 24: 31, RGB 8: 32, RGB 10: 30, RGB 12: 33.
@@ -197,7 +198,24 @@ Each entry notes where it came from.
   Clean recall for all rows: 0.961.
   `configs/base.yaml` now holds these budgets, so every config that does not set its own budget attacks at the ceiling; milestone 1's runs keep their own budgets in their stored `config.yaml`.
   Two readings for the write-up: the milestone 1 budgets (Cb/Cr 12, RGB 8) were visible to a careful viewer, and at equal LPIPS the YCbCr attack hid better than RGB (Y 3, Cb/Cr 4 passed at LPIPS 0.011; RGB 4 failed at 0.008).
-  The Cb/Cr ladder ran on GPU 0 next to the fine-tune instead of GPU 1, because a pasted command split in two; only its speed was affected.
+
+- **Transfer attack chosen on validation: ensemble + input diversity + momentum, 40 steps (2026-11-11, milestone 2a Task 11).**
+  Sweep `configs/sweeps/transfer_dev.yaml`: 604 validation images, the frozen YCbCr ceiling (Y 3, Cb/Cr 4), surrogates YOLOv8s s0 + YOLOv8n s0 + YOLOv8l s0, RT-DETR not shown.
+  mAP50 drop, seed means with 95% CIs for YOLOv10l (seeds 0 to 2):
+
+  | Variant | YOLOv8s s0 | YOLOv8n s0 | YOLOv8l s0 | YOLOv8s s1 | YOLOv8s s2 | YOLOv10l |
+  |---|---|---|---|---|---|---|
+  | ens | 0.399 | 0.327 | 0.353 | 0.054 | 0.053 | 0.038 [0.028, 0.047] |
+  | ens_di | 0.294 | 0.256 | 0.263 | 0.094 | 0.089 | 0.066 [0.050, 0.082] |
+  | ens_mi | 0.323 | 0.264 | 0.283 | 0.084 | 0.082 | 0.061 [0.044, 0.077] |
+  | **ens_di_mi** | 0.267 | 0.228 | 0.245 | 0.114 | 0.109 | **0.085 [0.065, 0.104]** |
+  | ens_di_mi, 100 steps | 0.292 | 0.241 | 0.262 | 0.118 | 0.118 | 0.091 [0.070, 0.109] |
+
+  Choice by the fixed rule: the largest YOLOv10l drop by point estimate is `ens_di_mi`; the 100-step rerun had to beat it by more than its CI half-width (0.020, so above 0.105) and reached 0.091, so the 40-step attack stays.
+  Transfer gate on validation: not passed (0.085, needs a CI low of at least 0.35).
+  Readings: the two techniques add up (they more than double the plain ensemble's transfer) and cost white-box strength, the usual trade; transfer stays weak even to YOLOv8s with other seeds (0.11), so the small budget, not the CNN-to-Transformer gap, looks like the limit; more steps barely help.
+  Clean YOLOv10l mAP50 on validation: 0.965.
+  The ens_mi attack ran once under a broken run name (a wrapped paste); its cached images were reused by the rerun, and the CLI now checks the name before attacking.
 
 ## Open
 
