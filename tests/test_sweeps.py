@@ -268,3 +268,24 @@ def test_transfer_final_is_the_checked_attack_on_the_test_set_with_every_target(
     raw = yaml.safe_load(TRANSFER_FINAL.read_text())["variants"]
     assert {"attack.space", "attack.eps.y", "attack.eps.cb", "attack.eps.cr"} <= raw["ycbcr"].keys()
     assert {"attack.space", "attack.eps.rgb"} <= raw["rgb"].keys()
+
+
+DIRECT_STRENGTH = CONFIG_DIR / "sweeps" / "direct_strength.yaml"
+DIRECT_MODELS = {"rtdetr": "rtdetr-l", "v10l": "yolov10l"}
+
+
+def test_direct_strength_attacks_each_model_with_its_own_weights_at_rgb16():
+    names = [f"{m}_s{s}" for m in DIRECT_MODELS for s in (0, 1, 2)]
+    assert variants(DIRECT_STRENGTH) == names
+    raw = yaml.safe_load(DIRECT_STRENGTH.read_text())
+    assert {"attack.space", "attack.eps.rgb"} <= raw["overrides"].keys()  # not inherited
+    for v in names:
+        cfg = load_config(DIRECT_STRENGTH, variant=v)
+        short, seed = v.rsplit("_s", 1)
+        model = [{"name": DIRECT_MODELS[short], "seed": int(seed)}]
+        assert [dict(m) for m in cfg.models.surrogates] == model, v  # its own weights
+        assert [dict(t) for t in cfg.models.targets] == model, v  # white-box only
+        a = cfg.attack
+        assert (a.method, a.space, a.eps.rgb, a.steps) == ("pgd", "rgb", 16, 40), v
+        assert (a.momentum, a.diversity.p, a.loss.type) == (0.0, 0.0, "topk"), v
+        assert (cfg.data.split, cfg.data.n_eval) == ("val", None), v

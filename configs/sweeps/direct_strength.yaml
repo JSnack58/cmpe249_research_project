@@ -1,0 +1,24 @@
+# Gate 1 of milestone 2b: does the direct attack work? (spec 2026-11-12, section 4)
+# Each model attacked with its own weights at a deliberately large, visible budget (RGB 16) on
+# validation. Every seed's white-box mAP50 drop must reach 0.80; a model that resists this is a
+# broken attack, not a robust model. These images are never shown as invisible.
+#
+#   python -m plate_cloak run --config configs/sweeps/direct_strength.yaml --variant V --name N
+
+id: direct_strength
+
+overrides:
+  data.split: val
+  attack.method: pgd
+  attack.space: rgb
+  attack.eps.rgb: 16
+  attack.momentum: 0.0
+  attack.diversity.p: 0.0
+
+variants:
+  rtdetr_s0: {models.surrogates: [{name: rtdetr-l, seed: 0}], models.targets: [{name: rtdetr-l, seed: 0}]}
+  rtdetr_s1: {models.surrogates: [{name: rtdetr-l, seed: 1}], models.targets: [{name: rtdetr-l, seed: 1}]}
+  rtdetr_s2: {models.surrogates: [{name: rtdetr-l, seed: 2}], models.targets: [{name: rtdetr-l, seed: 2}]}
+  v10l_s0: {models.surrogates: [{name: yolov10l, seed: 0}], models.targets: [{name: yolov10l, seed: 0}]}
+  v10l_s1: {models.surrogates: [{name: yolov10l, seed: 1}], models.targets: [{name: yolov10l, seed: 1}]}
+  v10l_s2: {models.surrogates: [{name: yolov10l, seed: 2}], models.targets: [{name: yolov10l, seed: 2}]}
