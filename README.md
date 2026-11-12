@@ -7,8 +7,8 @@ Or does global self-attention act as an implicit defense against local feature s
 
 ## Status
 
-Planning the main experiment.
-So far there are two feasibility spikes; open design questions are tracked in [docs/experiment-decisions.md](docs/experiment-decisions.md).
+Milestone 2a result (2026-11-11): at the largest budget a blind eye test could not see (YCbCr Y 2, Cb/Cr 4), an ensemble attack with input diversity and momentum drops YOLOv10l's mAP@0.5 by only 0.069 [0.060, 0.078] and RT-DETR's by 0.006, short of the 0.35 the CNN control must lose, so H1 remains untested.
+Results, decisions and open questions are tracked in [docs/experiment-decisions.md](docs/experiment-decisions.md); the two feasibility spikes below came first.
 
 ### Spike 01: attack feasibility
 

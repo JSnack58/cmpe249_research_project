@@ -230,6 +230,29 @@ Each entry notes where it came from.
   On validation it drops YOLOv10l's mAP50 by 0.062 (seed mean; 0.070, 0.061, 0.055) and the surrogates' by 0.19 to 0.21.
   The RGB comparison runs the same attack at the RGB ceiling, RGB 2, which passed as plain PGD (`ceiling4`, 20 of 40) and was not re-checked with the transfer techniques (the spec re-checks the YCbCr attack only).
 
+- **Milestone 2a result: the attack does not transfer to the CNN control at an invisible budget, so H1 remains untested (2026-11-11, milestone 2a Task 13).**
+  Sweep `configs/sweeps/transfer_final.yaml`, run once on the full test set (1,731 images; 1,661 plates every target found when clean); report in `results/reports/transfer_final/`.
+  The final attack (ensemble + input diversity + momentum, 40 steps) at YCbCr Y 2, Cb/Cr 4 and, as the comparison, at RGB 2.
+  mAP50 drop, seed means with 95% paired bootstrap CIs over images:
+
+  | Target | Seeds | Clean mAP50 | YCbCr Y 2, Cb/Cr 4 | RGB 2 |
+  |---|---|---|---|---|
+  | YOLOv8s (white-box) | 0 | 0.968 | 0.209 [0.190, 0.225] | 0.108 [0.094, 0.119] |
+  | YOLOv8n (white-box) | 0 | 0.971 | 0.193 [0.177, 0.210] | 0.106 [0.095, 0.120] |
+  | YOLOv8l (white-box) | 0 | 0.966 | 0.211 [0.194, 0.228] | 0.102 [0.089, 0.114] |
+  | YOLOv8s (retrained) | 1, 2 | 0.966 | 0.087 [0.077, 0.099] | 0.044 [0.037, 0.052] |
+  | YOLOv10l | 0, 1, 2 | 0.966 | 0.069 [0.060, 0.078] | 0.033 [0.028, 0.039] |
+  | RT-DETR-L | 0, 1, 2 | 0.983 | 0.006 [0.004, 0.009] | 0.007 [0.005, 0.009] |
+
+  Transfer gate (YOLOv10l drop with its CI low at or above 0.35): not passed at either ceiling (YCbCr 0.069, RGB 0.033).
+  By the spec (section 5, step 6), the verdict is read at the YCbCr ceiling: this attack does not transfer to the CNN control at a budget the eye test cannot see, so H1 remains untested; that is the result, not a reason to add more techniques.
+  The report's H1 line (YOLOv10l drop minus RT-DETR's: 0.062 [0.054, 0.071] for YCbCr, 0.026 [0.022, 0.033] for RGB) is computed anyway, but without a passed gate it is not evidence about the Transformer.
+  Readings for the write-up:
+  - The ordering is the one H1 predicts, white-box > other YOLOv8s seeds > YOLOv10l > RT-DETR, and RT-DETR barely moves (0.006), but the CNN control moves too little for the gap to say anything about attention.
+  - Transfer falls off even between seeds of the same architecture (0.21 white-box to 0.09 retrained), so at this budget the attack mostly exploits each model's own weights; the invisible budget, not the CNN-to-Transformer gap, is the binding limit.
+  - Compared with milestone 1 (YOLOv10l drop 0.035 at the visible Cb/Cr 12), the transfer techniques reach twice that drop at a third of the chroma budget and two thirds of the brightness budget.
+  - At their ceilings the YCbCr attack transfers about twice as well as the RGB one (0.069 against 0.033), because the eye allows a larger chroma budget than an RGB one; this is relevant to H2.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**
