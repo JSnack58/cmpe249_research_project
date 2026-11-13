@@ -305,6 +305,23 @@ Each entry notes where it came from.
   The write-up states that LPIPS and the viewer disagree about chroma noise, and that the rule named LPIPS.
   One out-of-order eye-test result sits on the chart: Cb/Cr 16 passed (23 of 40) while Cb/Cr 8 and 12 failed; the ceiling procedure stops at the first failure, so it never counted.
 
+- **H1-direct: not supported (2026-11-12, milestone 2b final run; `results/reports/direct_final`).**
+  Each seed of RT-DETR-L and YOLOv10l attacked with its own weights at the eye-tested budget (Y 3, Cb/Cr 4), plain PGD, 40 steps, on all 1,731 test images, once (`configs/sweeps/direct_final.yaml`).
+  White-box mAP50 drops, seed means with 95% bootstrap CIs over images (one resampling shared by every run):
+  - YOLOv10l (CNN control): 0.466 [0.446, 0.485] (seeds 0.483, 0.478, 0.437);
+  - RT-DETR-L (Transformer): 0.381 [0.362, 0.399] (seeds 0.424, 0.329, 0.391);
+  - difference: **0.085 [0.069, 0.101]**, against the pre-registered 0.35 with the CI above 0.
+  So H1-direct is not supported: with access to its own weights, RT-DETR breaks somewhat less than the size-matched CNN (the CI excludes 0), but nowhere near the 0.35 the rule asked for.
+  Readings for the write-up:
+  - 2a's tiny RT-DETR drop (0.006) came mostly from transfer, not from attention: attacked directly at an invisible budget, RT-DETR loses 0.38 mAP50.
+  - Transfer between the direct attacks is near zero in every direction (by-product matrix in the report): RT-DETR's noise moves YOLOv10l and YOLOv8s by 0.004-0.010, YOLOv10l's moves RT-DETR by 0.001-0.004, and even other seeds of the same model move only 0.03-0.05. At this budget each attack mostly exploits its own model's weights.
+  - Attack success on the 1,669 plates every model finds when clean: YOLOv10l 0.500, 0.481, 0.445; RT-DETR 0.499, 0.325, 0.385.
+  - The strength check (RGB 16) shows the same ordering at a visible budget: YOLOv10l 0.83, RT-DETR 0.77 (seed means).
+
+- **Run provenance named GPU 0 for every run until 2026-11-12.**
+  `provenance()` recorded `torch.cuda.get_device_name(0)` whatever device the run used, so runs on `cuda:1` (the RTX 3080 Ti) say "RTX 3090" in their `metrics.json` and cache `settings.yaml`.
+  No number depends on it; it now names the run's own device.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**
@@ -338,7 +355,7 @@ Each entry notes where it came from.
   Open Images labels plates that uploaders blacked out for privacy, and some plates pass the size filter but are too blurry to read.
   Decide whether to filter these (e.g. drop plates the clean detector or OCR cannot read) and report how many were dropped.
 - **Thresholds across architectures.**
-  YOLOv8 uses NMS; YOLOv10 and RT-DETR are NMS-free.
+  YOLOv8 and our YOLOv10l checkpoints use NMS (see "YOLOv10l is not NMS-free in this pipeline"); RT-DETR is NMS-free.
   Only the confidence threshold (0.25) is shared, and the write-up should say so.
 - **Optional: a real ALPR system as an extra black-box target.**
   Good for the presentation, not evidence for H1.

@@ -80,7 +80,7 @@ Design choices are discussed before code is written.
 ### 6.2 Models
 
 - Surrogate: YOLOv8s. Transfer targets: YOLOv10l (CNN control) and RT-DETR-L (Transformer). A3 adds YOLOv8n and YOLOv8l as alternative surrogates.
-  YOLOv10l replaces the proposal's YOLOv10n so the CNN control is close to RT-DETR-L in size, and, like RT-DETR, it is NMS-free.
+  YOLOv10l replaces the proposal's YOLOv10n so the CNN control is close to RT-DETR-L in size, and, like RT-DETR, it is NMS-free. *(Correction, 2026-11-12: our fine-tuned YOLOv10l checkpoints run the one-to-many head with NMS, like YOLOv8; see `experiment-decisions.md`.)*
   Check exact parameter counts when the models are loaded and report them.
 - All fine-tuned by us from COCO-pretrained weights on the same split, image size (640), epoch budget and augmentation.
   Optimizer settings follow each family's Ultralytics defaults, since RT-DETR does not train well with YOLO's defaults; the exact settings are recorded. *(Claude's call.)*
@@ -116,7 +116,7 @@ Design choices are discussed before code is written.
 - Detection: confidence threshold 0.25 for all models; a ground-truth plate counts as found if a detection overlaps it with IoU >= 0.5.
   Metrics: mAP@0.5 and Recall@0.5, each with a 95% percentile bootstrap CI over images (1,000 resamples, fixed seed).
   The bootstrap is paired: each resample uses the same images for every model, so differences between models get their own CI.
-  YOLOv8 uses NMS while YOLOv10 and RT-DETR are NMS-free; only the confidence threshold is shared, and the write-up says so.
+  YOLOv8 uses NMS while YOLOv10 and RT-DETR are NMS-free *(corrected 2026-11-12: our YOLOv10l checkpoints use NMS too)*; only the confidence threshold is shared, and the write-up says so.
   The mAP implementation must be validated against Ultralytics' own validation numbers on clean images.
 - Clean metrics for every model are reported next to every attacked metric.
 - Fidelity (per plate, on the perturbed region): LPIPS is the primary visibility metric; luminance SSIM and RGB SSIM (Wang et al. settings, see 7) are secondary.
