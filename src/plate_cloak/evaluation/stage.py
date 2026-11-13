@@ -123,7 +123,7 @@ def evaluate(cfg: DictConfig, adv_dir: Path, run_dir: Path | None = None) -> dic
         "attack": {"fingerprint": adv_dir.name, "max_change": done["max_change"]},
         "eval": OmegaConf.to_container(cfg.eval, resolve=True),
         "targets": target_metrics,
-        "provenance": provenance(),
+        "provenance": provenance(cfg.device),
     }
     if run_dir is not None:
         create_run_dir(run_dir.parent, run_dir.name)

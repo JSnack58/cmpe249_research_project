@@ -352,7 +352,7 @@ def test_cli_rejects_a_bad_run_name_before_any_attack(tmp_path, detectors, monke
 
 
 def test_rerun_gives_byte_identical_outputs(tmp_path, detectors, monkeypatch):
-    monkeypatch.setattr(stage, "provenance", lambda: {"git_commit": "x"})  # has a timestamp
+    monkeypatch.setattr(stage, "provenance", lambda device: {"git_commit": "x"})  # has a timestamp
     cfg = tiny_cfg(tmp_path)
     adv = fake_attack_cache(cfg)
     evaluate(cfg, adv, tmp_path / "a")

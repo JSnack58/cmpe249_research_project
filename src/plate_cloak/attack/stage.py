@@ -137,7 +137,7 @@ def run_attack(cfg: DictConfig) -> Path:
         "data": {k: cfg.data[k] for k in ("split", "imgsz", "min_plate_w", "min_plate_h")},
         "seed": cfg.seed,
         "n_images": len(ids),
-        "provenance": provenance(),
+        "provenance": provenance(cfg.device),
     }
     (out / "settings.yaml").write_text(yaml.safe_dump(settings, sort_keys=False))
     (out / "done.json").write_text(json.dumps({"n_images": len(ids), "max_change": worst}) + "\n")

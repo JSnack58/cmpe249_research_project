@@ -50,9 +50,19 @@ def write_resolved_config(cfg: DictConfig, run_dir: Path) -> None:
     OmegaConf.save(cfg, Path(run_dir) / "config.yaml", resolve=True)
 
 
-def provenance() -> dict[str, Any]:
-    """Where a result came from: code version, library versions, hardware, time."""
+def provenance(device: str = "cuda") -> dict[str, Any]:
+    """Where a result came from: code version, library versions, hardware, time.
+
+    `device` is the one the run used (cfg.device); "gpu" names that GPU, or is None on the CPU.
+    """
     import torch  # imported here so loading this module stays fast
+
+    gpu = None
+    dev = torch.device(device)
+    if dev.type == "cuda" and torch.cuda.is_available():
+        gpu = torch.cuda.get_device_name(
+            dev.index if dev.index is not None else torch.cuda.current_device()
+        )
 
     return {
         "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -61,7 +71,7 @@ def provenance() -> dict[str, Any]:
         "python": platform.python_version(),
         "torch": version("torch"),
         "ultralytics": version("ultralytics"),
-        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+        "gpu": gpu,
     }
 
 

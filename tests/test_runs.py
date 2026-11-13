@@ -55,3 +55,16 @@ def test_provenance_records_code_and_environment():
     assert re.fullmatch(r"[0-9a-f]{40}", p["git_commit"])
     assert isinstance(p["git_dirty"], bool)
     assert {"timestamp", "python", "torch", "ultralytics", "gpu"} <= p.keys()
+
+
+def test_provenance_names_the_gpu_the_run_used(monkeypatch):
+    import torch
+
+    names = {0: "GPU zero", 1: "GPU one"}
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: names[index])
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 0)
+    assert provenance("cuda:1")["gpu"] == "GPU one"
+    assert provenance("cuda:0")["gpu"] == "GPU zero"
+    assert provenance("cuda")["gpu"] == "GPU zero"  # the current device, index 0 here
+    assert provenance("cpu")["gpu"] is None
