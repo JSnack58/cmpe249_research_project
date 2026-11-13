@@ -289,3 +289,22 @@ def test_direct_strength_attacks_each_model_with_its_own_weights_at_rgb16():
         assert (a.method, a.space, a.eps.rgb, a.steps) == ("pgd", "rgb", 16, 40), v
         assert (a.momentum, a.diversity.p, a.loss.type) == (0.0, 0.0, "topk"), v
         assert (cfg.data.split, cfg.data.n_eval) == ("val", None), v
+
+
+DIRECT_EYE = CONFIG_DIR / "sweeps" / "direct_eye.yaml"
+
+
+def test_direct_eye_is_the_frozen_plain_pgd_ceiling_on_validation():
+    assert variants(DIRECT_EYE) == ["rtdetr_s0", "v10l_s0"]
+    raw = yaml.safe_load(DIRECT_EYE.read_text())
+    budget = {"attack.space", "attack.eps.y", "attack.eps.cb", "attack.eps.cr"}
+    assert budget <= raw["overrides"].keys()  # written in the file, not inherited
+    for v in variants(DIRECT_EYE):
+        cfg = load_config(DIRECT_EYE, variant=v)
+        model = [{"name": DIRECT_MODELS[v.removesuffix("_s0")], "seed": 0}]
+        assert [dict(m) for m in cfg.models.surrogates] == model, v  # its own weights
+        assert [dict(t) for t in cfg.models.targets] == model, v
+        a = cfg.attack
+        assert (a.method, a.space, a.eps.y, a.eps.cb, a.eps.cr) == ("pgd", "ycbcr", 3, 4, 4), v
+        assert (a.steps, a.momentum, a.diversity.p, a.loss.type) == (40, 0.0, 0.0, "topk"), v
+        assert (cfg.data.split, cfg.data.n_eval) == ("val", None), v

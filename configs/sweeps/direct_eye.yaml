@@ -1,0 +1,21 @@
+# Gate 2 of milestone 2b: is each model's direct noise invisible? (spec 2026-11-12, section 5)
+# Seed 0 of each model attacked with its own weights at the frozen plain-PGD ceiling (Y 3, Cb/Cr 4)
+# on validation, for one 80-trial eye test. If either fails, both step down to Y 2 (variants *_y2).
+#
+#   python -m plate_cloak run --config configs/sweeps/direct_eye.yaml --variant V --name N
+
+id: direct_eye
+
+overrides:
+  data.split: val
+  attack.method: pgd
+  attack.space: ycbcr
+  attack.eps.y: 3
+  attack.eps.cb: 4
+  attack.eps.cr: 4
+  attack.momentum: 0.0
+  attack.diversity.p: 0.0
+
+variants:
+  rtdetr_s0: {models.surrogates: [{name: rtdetr-l, seed: 0}], models.targets: [{name: rtdetr-l, seed: 0}]}
+  v10l_s0: {models.surrogates: [{name: yolov10l, seed: 0}], models.targets: [{name: yolov10l, seed: 0}]}

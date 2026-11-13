@@ -261,6 +261,32 @@ Each entry notes where it came from.
   The one result the imbalance could have tipped is Cb/Cr 12's narrow failure (26 against 21.8), which is not on the path to any ceiling.
   The builder now puts exactly half of each budget's trials on each side, in random order.
 
+- **Milestone 2b strength check: the attack works on both models; the bar was lowered from 0.80 to 0.70 after seeing the data (2026-11-12, owner's decision).**
+  Each model attacked with its own weights at RGB 16, plain PGD, 40 steps, top-k loss (k 100), 604 validation images; white-box mAP50 drop per seed:
+
+  | Model | Seed 0 | Seed 1 | Seed 2 |
+  |---|---|---|---|
+  | RT-DETR-L, first attack (decoder scores only) | 0.319 | 0.324 | 0.396 |
+  | RT-DETR-L, decoder + encoder scores | 0.774 | 0.737 | 0.810 |
+  | YOLOv10l | 0.892 | 0.860 | 0.747 |
+
+  The first RT-DETR attack was broken, as the check was built to catch: RT-DETR's encoder scores every location and passes its top 300 to the decoder as queries, and the loss pushed only the decoder's scores, so each step the encoder proposed the plate again and the decoder found it again.
+  Plates survived exactly where the encoder still proposed them.
+  The attack now pushes the encoder's proposal scores too (the loss is still the spec's top-k, k 100); on the same 60 validation images the drop went from 0.287 to 0.815.
+  Ruled out on the way: the 8-bit rounding and the `predict()` pipeline (consistent end to end), more steps (100 steps add about 0.02-0.03), and a loss without k (worse on both models).
+  The cache fingerprint now records how RT-DETR's scores are read, so the broken caches are never reused; their runs are kept as `results/runs/direct_strength_rtdetr_s*_decoder_only`.
+  After the fix, three of six seeds sat below the pre-registered 0.80 (RT-DETR s0, s1; YOLOv10l s2).
+  The owner lowered the bar to 0.70 for every seed of both models, which all six pass, because:
+  - 0.80 was an estimate made before any 2b data, from YOLOv8s's 0.94 at RGB 12; these larger models resist somewhat more, and both land in the same 0.74-0.89 band;
+  - the check exists to tell a broken attack (0.32-0.40) from a working one, and it did;
+  - the bar applies to both models alike and does not touch the H1-direct rule, and a lower bar for the CNN control can only make H1-direct harder to support.
+  Stated in the write-up as a change made after seeing the data.
+  YOLOv10l seed 2 runs the same code path as seeds 0 and 1 and simply resists more.
+- **YOLOv10l is not NMS-free in this pipeline (2026-11-12, milestone 2b Task 2).**
+  Our fine-tuned YOLOv10l checkpoints load with `end2end = False`: `predict()` fuses the model, drops the one-to-one head and runs the one-to-many head with NMS, exactly like YOLOv8.
+  Earlier documents (including the 2b spec) call the CNN control "NMS-free"; that is wrong for every milestone here, though no number changes (the same evaluation ran throughout).
+  The write-up must not describe YOLOv10l as NMS-free.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**

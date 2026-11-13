@@ -40,7 +40,7 @@ dropping about the same means 2a's small RT-DETR number (0.006) came from transf
 
 ## 3. The comparison
 
-- **Models:** RT-DETR-L (Transformer) and YOLOv10l (CNN control; size-matched and, like RT-DETR, NMS-free), seeds 0, 1, 2 each, the fine-tuned weights already in `weights/`.
+- **Models:** RT-DETR-L (Transformer) and YOLOv10l (CNN control; size-matched; our checkpoints run its one-to-many head with NMS, like YOLOv8: see `experiment-decisions.md`), seeds 0, 1, 2 each, the fine-tuned weights already in `weights/`.
 - **Attack:** PGD as in milestone 1 (top-k loss, k 100; 40 steps; step factor 2.5; margin 0.10; noise only on the plate region), one model at a time, each seed attacked with its own weights.
   Transfer techniques off (momentum 0, diversity p 0).
 - **Each attacked image set is evaluated on the model it was made for** (the white-box drop), and, as a by-product, on the other five direct targets and YOLOv8s seeds 0-2, so cross-architecture transfer in both directions is reported too (not part of the verdict).
@@ -56,7 +56,7 @@ Ultralytics resizes RT-DETR's input with `cv2.resize` on 8-bit pixels, which a d
 
 **Each family needs a score adapter.**
 The current loss expects YOLOv8's Detect-head layout (1, 5, anchors).
-RT-DETR in eval mode returns 300 query boxes with scores, already top-k selected; YOLOv10l's one-to-one head returns its own top-k layout.
+RT-DETR in eval mode returns 300 query boxes with scores, already top-k selected (YOLOv10l, as loaded here, returns YOLOv8's layout).
 The builder adds, per family, a differentiable mapping from the network's eval-mode output to one plate-confidence score per candidate, so the same top-k loss applies to all three families.
 *(Builder's call: whether to read scores before or after each head's own top-k, as long as the strength check passes and the choice is the same idea for both models; recorded in `experiment-decisions.md`.)*
 
@@ -64,7 +64,7 @@ The builder adds, per family, a differentiable mapping from the network's eval-m
 
 A weak RT-DETR attack is the easiest way for this experiment to fool us, so its strength is checked first, on validation.
 
-- **Check:** at a deliberately large, visible budget, RGB 16, plain PGD, 40 steps, each model's white-box mAP@0.5 drop must reach at least 0.80 as a point estimate, for every seed of RT-DETR-L and YOLOv10l (each seed attacked with its own weights, 604 validation images).
+- **Check:** at a deliberately large, visible budget, RGB 16, plain PGD, 40 steps, each model's white-box mAP@0.5 drop must reach at least 0.80 as a point estimate, for every seed of RT-DETR-L and YOLOv10l (lowered to 0.70 by the owner after the first results, recorded in `experiment-decisions.md`; each seed attacked with its own weights, 604 validation images).
   *(Claude's call: 0.80 because YOLOv8s white-box at the much smaller RGB 12 already drops 0.94, so a working gradient attack at RGB 16 should all but erase detection; a point estimate, because this is a check that the attack works, not a hypothesis test, and the bar sits far below where a working attack lands.)*
 - **The check applies to both models the same way.** If either model fails, its attack is broken, not the model robust: fix the gradient path (adapter, preprocessing, query selection) and rerun the check for that model.
   YOLOv10l's one-to-one head has its own top-k, so it can fail for the same reason RT-DETR can.
