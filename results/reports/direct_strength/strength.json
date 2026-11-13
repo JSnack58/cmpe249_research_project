@@ -1,0 +1,74 @@
+[
+  {
+    "run": "direct_strength_rtdetr_s0",
+    "model": "rtdetr-l",
+    "seed": 0,
+    "drop": {
+      "point": 0.7743385178610773,
+      "low": 0.7403422361235921,
+      "high": 0.8070609612354022
+    },
+    "bar": 0.7,
+    "passed": true
+  },
+  {
+    "run": "direct_strength_rtdetr_s1",
+    "model": "rtdetr-l",
+    "seed": 1,
+    "drop": {
+      "point": 0.7367445621955325,
+      "low": 0.6978133225617353,
+      "high": 0.7680934663995311
+    },
+    "bar": 0.7,
+    "passed": true
+  },
+  {
+    "run": "direct_strength_rtdetr_s2",
+    "model": "rtdetr-l",
+    "seed": 2,
+    "drop": {
+      "point": 0.8099508186281181,
+      "low": 0.7715539756032443,
+      "high": 0.8410982208592239
+    },
+    "bar": 0.7,
+    "passed": true
+  },
+  {
+    "run": "direct_strength_v10l_s0",
+    "model": "yolov10l",
+    "seed": 0,
+    "drop": {
+      "point": 0.8915343215430649,
+      "low": 0.8627008252900299,
+      "high": 0.9119685809868965
+    },
+    "bar": 0.7,
+    "passed": true
+  },
+  {
+    "run": "direct_strength_v10l_s1",
+    "model": "yolov10l",
+    "seed": 1,
+    "drop": {
+      "point": 0.860059767062375,
+      "low": 0.8271363152497625,
+      "high": 0.8810425917366989
+    },
+    "bar": 0.7,
+    "passed": true
+  },
+  {
+    "run": "direct_strength_v10l_s2",
+    "model": "yolov10l",
+    "seed": 2,
+    "drop": {
+      "point": 0.7470501977759217,
+      "low": 0.7090033940124002,
+      "high": 0.782005117076311
+    },
+    "bar": 0.7,
+    "passed": true
+  }
+]

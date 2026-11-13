@@ -99,6 +99,17 @@ def report(args: argparse.Namespace) -> int:
     return 0
 
 
+def direct(args: argparse.Namespace) -> int:
+    """Strength check or H1-direct verdict over several direct-attack runs (milestone 2b)."""
+    from plate_cloak.analysis.direct import write_strength, write_verdict
+
+    if args.action == "strength":
+        write_strength(args.runs, args.out)
+    else:
+        write_verdict(args.runs, args.out)
+    return 0
+
+
 def visibility(args: argparse.Namespace) -> int:
     """LPIPS between clean and attacked plate crops for one attack (its cache must exist)."""
     from plate_cloak.visibility.lpips_stage import run_visibility
@@ -200,6 +211,14 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--runs", type=Path, nargs="+", required=True, help="run folders")
     p_report.add_argument("--out", type=Path, required=True, help="folder for the report files")
     p_report.set_defaults(func=report)
+
+    p_direct = sub.add_parser(
+        "direct", help="milestone 2b: strength check or H1-direct verdict over direct runs"
+    )
+    p_direct.add_argument("action", choices=["strength", "verdict"])
+    p_direct.add_argument("--runs", type=Path, nargs="+", required=True, help="run folders")
+    p_direct.add_argument("--out", type=Path, required=True, help="folder for the report files")
+    p_direct.set_defaults(func=direct)
 
     p_vis = sub.add_parser("visibility", help="LPIPS of each attacked plate crop vs. the clean one")
     _add_config_args(p_vis)
