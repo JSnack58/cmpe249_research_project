@@ -112,10 +112,23 @@ def direct(args: argparse.Namespace) -> int:
 
 def visibility(args: argparse.Namespace) -> int:
     """LPIPS between clean and attacked plate crops for one attack (its cache must exist)."""
-    from plate_cloak.visibility.lpips_stage import run_visibility
+    from plate_cloak.visibility.lpips_stage import config_for_cache, run_visibility
 
-    cfg = load_config(args.config, args.overrides, variant=args.variant)
-    run_visibility(cfg, args.name, args.out)
+    if args.cache is None:
+        cfg = load_config(args.config, args.overrides, variant=args.variant)
+    else:
+        if args.variant is not None or Path(args.config) != Path(BASE_CONFIG):
+            raise SystemExit("visibility: --cache takes its settings from the cache, not --config")
+        cfg = config_for_cache(args.cache, args.overrides)
+    run_visibility(cfg, args.name, args.out, adv_dir=args.cache)
+    return 0
+
+
+def h2(args: argparse.Namespace) -> int:
+    """H2 by its written rule, from milestone 1's pair of runs and their LPIPS."""
+    from plate_cloak.analysis.h2 import write_h2
+
+    write_h2(args)
     return 0
 
 
@@ -225,7 +238,23 @@ def main(argv: list[str] | None = None) -> int:
     _add_variant_arg(p_vis)
     p_vis.add_argument("--name", required=True, help="output folder name")
     p_vis.add_argument("--out", type=Path, help="parent folder (default: results/visibility)")
+    p_vis.add_argument(
+        "--cache", type=Path, help="score this cache folder (test split; settings from the cache)"
+    )
     p_vis.set_defaults(func=visibility)
+
+    p_h2 = sub.add_parser("h2", help="H2 by its written rule (recall within 0.05, lower LPIPS)")
+    p_h2.add_argument("--ycbcr-run", type=Path, required=True, help="run folder (YCbCr attack)")
+    p_h2.add_argument("--rgb-run", type=Path, required=True, help="run folder (RGB attack)")
+    p_h2.add_argument("--ycbcr-lpips", type=Path, required=True, help="lpips.csv of the YCbCr run")
+    p_h2.add_argument("--rgb-lpips", type=Path, required=True, help="lpips.csv of the RGB run")
+    p_h2.add_argument("--out", type=Path, required=True, help="folder for the report files")
+    p_h2.add_argument("--chart-rungs", type=Path, nargs="*", default=[], help="visibility folders")
+    p_h2.add_argument(
+        "--eyetest-scores", type=Path, nargs="*", default=[], help="eye-test scores.json files"
+    )
+    p_h2.add_argument("--runs-root", type=Path, default=Path("results/runs"), help="rung runs")
+    p_h2.set_defaults(func=h2)
 
     p_eye = sub.add_parser("eyetest", help="blind eye test: which plate crop was attacked?")
     p_eye.add_argument("action", choices=["make", "serve", "score"])

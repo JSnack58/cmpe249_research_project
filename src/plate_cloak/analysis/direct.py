@@ -80,7 +80,7 @@ def h1_direct(
             f"{sorted(groups[cnn])} vs. {sorted(groups[transformer])}"
         )
     runs_used = [groups[m][s] for m in (cnn, transformer) for s in seeds]
-    _same_images(runs_used)
+    check_same_images(runs_used)
 
     def mean_drop(model, w):
         return float(np.mean([groups[model][s].drop([(model, s)], "map50", w) for s in seeds]))
@@ -196,7 +196,7 @@ def _by_white_box(runs: list[Run]) -> dict[tuple[str, int], Run]:
     return found
 
 
-def _same_images(runs: list[Run]) -> None:
+def check_same_images(runs: list[Run]) -> None:
     ids = [list(pd.unique(r.plates["image_id"])) for r in runs]
     for run, other in zip(runs[1:], ids[1:], strict=True):
         if other != ids[0]:

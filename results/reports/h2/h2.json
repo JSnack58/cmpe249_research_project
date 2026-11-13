@@ -1,0 +1,156 @@
+{
+  "verdict": {
+    "surrogate": "yolov8s_s0",
+    "ycbcr_run": "m1_h1_main",
+    "rgb_run": "m1_h1_rgb",
+    "tolerance": 0.05,
+    "ycbcr_recall": {
+      "point": 0.0543956043956044,
+      "low": 0.04490363080544703,
+      "high": 0.06507795815161863
+    },
+    "rgb_recall": {
+      "point": 0.08131868131868132,
+      "low": 0.06921320748520855,
+      "high": 0.09428886578686281
+    },
+    "recall_difference": {
+      "point": -0.026923076923076925,
+      "low": -0.035639397104828656,
+      "high": -0.018660556386169414
+    },
+    "n_plates_lpips": 1819,
+    "ycbcr_lpips": {
+      "point": 0.038502057724024194,
+      "low": 0.0372819533260033,
+      "high": 0.03976565114073668
+    },
+    "rgb_lpips": {
+      "point": 0.02622640186915888,
+      "low": 0.024977092413413962,
+      "high": 0.02740397344694887
+    },
+    "lpips_difference": {
+      "point": 0.01227565585486531,
+      "low": 0.011585138620120944,
+      "high": 0.012964057614073666
+    },
+    "recall_equivalent": true,
+    "less_visible": false,
+    "supported": false
+  },
+  "chart": [
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb4",
+      "lpips": 0.008339393546956762,
+      "recall": 0.36977491961414793,
+      "eye": "pass",
+      "eye_score": "24/40"
+    },
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb8",
+      "lpips": 0.02294868739341293,
+      "recall": 0.13504823151125403,
+      "eye": "fail",
+      "eye_score": "26/40"
+    },
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb12",
+      "lpips": 0.038350506735833845,
+      "recall": 0.04823151125401929,
+      "eye": "fail",
+      "eye_score": "26/40"
+    },
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb16",
+      "lpips": 0.05310943428954032,
+      "recall": 0.022508038585209004,
+      "eye": "pass",
+      "eye_score": "23/40"
+    },
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb20",
+      "lpips": 0.06757203845600702,
+      "recall": 0.012861736334405145,
+      "eye": "fail",
+      "eye_score": "29/40"
+    },
+    {
+      "ladder": "visibility_cbcr",
+      "rung": "cb24",
+      "lpips": 0.08034673239736312,
+      "recall": 0.00964630225080386,
+      "eye": "fail",
+      "eye_score": "31/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb2",
+      "lpips": 0.0021479179568752874,
+      "recall": 0.6591639871382636,
+      "eye": "pass",
+      "eye_score": "20/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb4",
+      "lpips": 0.008027549537809842,
+      "recall": 0.33440514469453375,
+      "eye": "fail",
+      "eye_score": "33/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb6",
+      "lpips": 0.016374407209219392,
+      "recall": 0.15755627009646303,
+      "eye": "fail",
+      "eye_score": "32/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb8",
+      "lpips": 0.025480819195643715,
+      "recall": 0.07717041800643087,
+      "eye": "fail",
+      "eye_score": "32/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb10",
+      "lpips": 0.03441857382613219,
+      "recall": 0.03858520900321544,
+      "eye": "fail",
+      "eye_score": "30/40"
+    },
+    {
+      "ladder": "visibility_rgb",
+      "rung": "rgb12",
+      "lpips": 0.045167489686286096,
+      "recall": 0.01929260450160772,
+      "eye": "fail",
+      "eye_score": "33/40"
+    },
+    {
+      "ladder": "visibility_y",
+      "rung": "y3",
+      "lpips": 0.011070615363979587,
+      "recall": 0.2572347266881029,
+      "eye": "pass",
+      "eye_score": "24/40"
+    },
+    {
+      "ladder": "visibility_y",
+      "rung": "y4",
+      "lpips": 0.014527692626285818,
+      "recall": 0.1832797427652733,
+      "eye": "fail",
+      "eye_score": "26/40"
+    }
+  ]
+}

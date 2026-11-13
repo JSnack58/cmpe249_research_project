@@ -115,3 +115,59 @@ def test_cli_visibility_refuses_an_unfinished_cache(tmp_path):
         cli.main(
             ["visibility", "--name", "v1", "--out", str(tmp_path / "vis"), *overrides(tmp_path)]
         )
+
+
+# --- an explicit cache folder (H2 scores milestone 1's caches, whose run configs are older) ---
+
+
+def explicit_cache(tmp_path, n_images=2):  # len(IDS)
+    """A finished cache in a folder of its own, with settings.yaml as the attack stage writes it."""
+    cfg = load_config(BASE_CONFIG, overrides(tmp_path))
+    found = fake_cache(cfg)
+    cache = tmp_path / "old_cache" / "abc123def456"
+    cache.parent.mkdir()
+    found.rename(cache)
+    settings = {
+        "fingerprint": cache.name,
+        "attack": {"space": "rgb", "eps": {"rgb": 8, "y": 2, "cb": 12, "cr": 12}, "steps": 40},
+        "data": {"imgsz": 160, "min_plate_w": 20, "min_plate_h": 10},
+        "n_images": n_images,
+    }
+    (cache / "settings.yaml").write_text(json.dumps(settings))  # JSON is valid YAML
+    return cache
+
+
+def test_config_for_cache_takes_the_cache_attack_and_data(tmp_path):
+    from plate_cloak.visibility.lpips_stage import config_for_cache
+
+    cfg = config_for_cache(explicit_cache(tmp_path), overrides(tmp_path)[:3])
+    assert cfg.data.split == "test" and cfg.data.imgsz == 160
+    assert (cfg.attack.space, cfg.attack.eps.rgb) == ("rgb", 8)
+    assert cfg.attack.steps == 40
+
+
+def test_config_for_cache_refuses_a_different_image_count(tmp_path):
+    from plate_cloak.visibility.lpips_stage import config_for_cache
+
+    with pytest.raises(ValueError, match="3 images"):
+        config_for_cache(explicit_cache(tmp_path, n_images=3), overrides(tmp_path)[:3])
+
+
+def test_visibility_scores_an_explicit_cache(tmp_path, monkeypatch):
+    cache = explicit_cache(tmp_path)
+    monkeypatch.setattr(
+        lpips_stage, "lpips_scores", lambda pairs, device: np.array([0.2, 0.3][: len(pairs)])
+    )
+    out = tmp_path / "vis"
+    args = ["visibility", "--cache", str(cache), "--name", "v1", "--out", str(out)]
+    assert cli.main([*args, *overrides(tmp_path)[:3], "device=cpu"]) == 0
+    summary = json.loads((out / "v1" / "summary.json").read_text())
+    assert summary["fingerprint"] == cache.name and summary["n"] == 2
+    assert summary["budget"] == {"rgb": 8}
+
+
+def test_visibility_refuses_a_cache_with_a_variant(tmp_path):
+    cache = explicit_cache(tmp_path)
+    args = ["visibility", "--cache", str(cache), "--variant", "cb4", "--name", "v1"]
+    with pytest.raises(SystemExit):
+        cli.main(args)

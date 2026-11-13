@@ -292,6 +292,19 @@ Each entry notes where it came from.
   So the final run uses the frozen plain-PGD ceiling, Y 3, Cb/Cr 4, for both models; no step-down.
   The scorer's "ceiling v10l_s0, extend up" line treats the two variants as a ladder, which they are not; ignore it for this session.
 
+- **H2 by its written rule: not supported (2026-11-12, milestone 2b; `results/reports/h2`).**
+  The rule (main design): the YCbCr attack's attacked YOLOv8s recall within 0.05 of the RGB attack's, with the whole 95% CI of the difference inside plus or minus 0.05, and lower LPIPS.
+  Scored on milestone 1's pair, `m1_h1_main` (Y 2, Cb/Cr 12) against `m1_h1_rgb` (RGB 8), on the same 1,731 test images, from their existing caches (no attack rerun; LPIPS only, `results/visibility/h2_ycbcr` and `h2_rgb`):
+  - attacked YOLOv8s recall: YCbCr 0.054 [0.045, 0.065], RGB 0.081 [0.069, 0.094]; difference -0.027 [-0.036, -0.019], inside the band: **the recall part holds** (chroma hides slightly better);
+  - mean LPIPS over the 1,819 plates scored in both: YCbCr 0.039 [0.037, 0.040], RGB 0.026 [0.025, 0.027]; difference +0.012 [0.012, 0.013]: **the LPIPS part fails**.
+  So H2 is not supported as written.
+  Evidence the rule did not name, reported beside it (validation subsample, `results/reports/h2/h2_chart.png`):
+  - at equal LPIPS the human viewer and LPIPS disagree about chroma noise: Cb/Cr 4 (LPIPS 0.0083) passed the eye test, 24 of 40, while RGB 4 (LPIPS 0.0080) failed it, 33 of 40;
+  - at the eye-test ceilings, chroma hides more: Cb/Cr 4 leaves YOLOv8s recall at 0.370 and RGB 2 at 0.659, because the eye allows a larger chroma budget;
+  - by LPIPS alone the RGB curve hides slightly more per unit of LPIPS, which is what the rule measured.
+  The write-up states that LPIPS and the viewer disagree about chroma noise, and that the rule named LPIPS.
+  One out-of-order eye-test result sits on the chart: Cb/Cr 16 passed (23 of 40) while Cb/Cr 8 and 12 failed; the ceiling procedure stops at the first failure, so it never counted.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**

@@ -1,8 +1,11 @@
 """Visibility stage: LPIPS between each clean and attacked plate crop.
 
     python -m plate_cloak visibility --config SWEEP --variant V --name N [--out DIR] [k=v ...]
+    python -m plate_cloak visibility --cache DIR --name N [--out DIR] [k=v ...]
 
-Reads the attack cache that the config's settings point to (it must be finished) and writes
+Reads the attack cache that the config's settings point to (it must be finished), or with --cache
+an explicit cache folder on the test split (milestone 1's caches, whose run configs predate the
+current schema; the attack and data settings come from the cache's settings.yaml), and writes
 <out>/<name>/ holding
     lpips.csv      image_id, plate_idx, lpips: one row per counted plate (empty if skipped)
     summary.json   n, n_skipped, mean, median, p90, the budget and the cache fingerprint
@@ -22,10 +25,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from plate_cloak.attack.stage import attack_settings, fingerprint
-from plate_cloak.config import resolve_path
+from plate_cloak.config import BASE_CONFIG, load_config, resolve_path
 from plate_cloak.data.eval_images import eval_image_ids
 from plate_cloak.progress import Progress
 from plate_cloak.runs import check_run_name
@@ -59,14 +62,40 @@ def lpips_scores(pairs: list[PlateCrop], device) -> np.ndarray:
     return scores
 
 
-def run_visibility(cfg: DictConfig, name: str, out_root: Path | None = None) -> Path:
-    """Score every counted plate of the config's images; return the output folder."""
+def config_for_cache(adv_dir: Path, overrides: list[str] | tuple[str, ...] = ()) -> DictConfig:
+    """base.yaml on the test split, with the cache's own attack and data settings.
+
+    Refuses a cache whose image count differs from the images this config selects, so the crops
+    are taken from the images the cache was attacked on.
+    """
+    settings = OmegaConf.load(Path(adv_dir) / "settings.yaml")
+    flat = {"data.split": "test"}
+    for section in ("attack", "data"):
+        for key, value in _flat(OmegaConf.to_container(settings[section]), section).items():
+            flat[key] = value
+    pairs = [*overrides, *(f"{k}={_yaml(v)}" for k, v in flat.items())]
+    cfg = load_config(BASE_CONFIG, pairs)
+    n = len(eval_image_ids(cfg))
+    if n != settings.n_images:
+        raise ValueError(f"{adv_dir} holds {settings.n_images} images, but the config selects {n}")
+    return cfg
+
+
+def run_visibility(
+    cfg: DictConfig, name: str, out_root: Path | None = None, adv_dir: Path | None = None
+) -> Path:
+    """Score every counted plate of the config's images; return the output folder.
+
+    `adv_dir` names the cache folder; by default it is the one the config's settings point to.
+    """
     check_run_name(name)
     out = Path(out_root or resolve_path(DEFAULT_OUT)) / name
     if out.exists():
         raise FileExistsError(f"{out} already exists; pick another --name")
     ids = eval_image_ids(cfg)
-    adv_dir = resolve_path(cfg.output.cache_root) / fingerprint(cfg, ids)
+    if adv_dir is None:
+        adv_dir = resolve_path(cfg.output.cache_root) / fingerprint(cfg, ids)
+    adv_dir = Path(adv_dir)
     if not (adv_dir / "done.json").exists():
         raise RuntimeError(f"{adv_dir} is not finished (no done.json); run the attack first")
 
@@ -98,6 +127,18 @@ def run_visibility(cfg: DictConfig, name: str, out_root: Path | None = None) -> 
     mean = "n/a" if summary["mean"] is None else f"{summary['mean']:.4f}"
     print(f"visibility: wrote {out}  (LPIPS mean {mean} over {summary['n']} plates)")
     return out
+
+
+def _flat(d: dict, prefix: str) -> dict:
+    out = {}
+    for key, value in d.items():
+        path = f"{prefix}.{key}"
+        out.update(_flat(value, path) if isinstance(value, dict) else {path: value})
+    return out
+
+
+def _yaml(value) -> str:
+    return json.dumps(value)  # a valid YAML scalar for the override parser
 
 
 def _tensor(img, device) -> torch.Tensor:
