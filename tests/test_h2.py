@@ -17,21 +17,31 @@ def run(root, name, drop):
     return write_synthetic_run(root / name, drops={"yolov8s": drop}, targets=SURROGATE)
 
 
-def lpips_csv(root, name, values):
+def lpips_csv(root, name, values, fingerprint):
+    """lpips.csv and summary.json, as the visibility stage writes them, in a folder of their own."""
     rows = [{"image_id": f"img{i:03d}", "plate_idx": 0, "lpips": v} for i, v in enumerate(values)]
-    path = root / f"{name}.csv"
+    (root / name).mkdir()
+    path = root / name / "lpips.csv"
     pd.DataFrame(rows).to_csv(path, index=False)
+    (root / name / "summary.json").write_text(json.dumps({"fingerprint": fingerprint}))
     return path
+
+
+def set_fingerprint(run_dir, fingerprint):
+    (run_dir / "metrics.json").write_text(json.dumps({"attack": {"fingerprint": fingerprint}}))
 
 
 def inputs(tmp_path, ycbcr_drop, rgb_drop, ycbcr_lpips, rgb_lpips):
     rng = np.random.default_rng(0)
     noise = rng.normal(0, 0.002, N_IMAGES)
+    y, r = run(tmp_path, "ycbcr", ycbcr_drop), run(tmp_path, "rgb", rgb_drop)
+    set_fingerprint(y, "yyyyyyyyyyyy")
+    set_fingerprint(r, "rrrrrrrrrrrr")
     return (
-        run(tmp_path, "ycbcr", ycbcr_drop),
-        run(tmp_path, "rgb", rgb_drop),
-        lpips_csv(tmp_path, "ycbcr_lpips", ycbcr_lpips + noise),
-        lpips_csv(tmp_path, "rgb_lpips", rgb_lpips + noise[::-1]),
+        y,
+        r,
+        lpips_csv(tmp_path, "ycbcr_lpips", ycbcr_lpips + noise, "yyyyyyyyyyyy"),
+        lpips_csv(tmp_path, "rgb_lpips", rgb_lpips + noise[::-1], "rrrrrrrrrrrr"),
     )
 
 
@@ -62,6 +72,20 @@ def test_h2_lpips_is_paired_over_plates_in_both_files(tmp_path):
     table.loc[:9, "lpips"] = np.nan  # skipped crops (too small)
     table.to_csv(yl, index=False)
     assert h2_verdict(y, r, yl, rl)["n_plates_lpips"] == N_IMAGES - 10
+
+
+def test_h2_refuses_swapped_lpips_files(tmp_path):
+    y, r, yl, rl = inputs(tmp_path, 0.9, 0.9, 0.02, 0.03)
+    with pytest.raises(ValueError, match="was not computed on"):
+        h2_verdict(y, r, rl, yl)
+
+
+def test_h2_refuses_lpips_that_misses_counted_plates(tmp_path):
+    # A subsample (or another cache with the same fingerprint) must not be joined silently.
+    y, r, yl, rl = inputs(tmp_path, 0.9, 0.9, 0.02, 0.03)
+    pd.read_csv(yl).iloc[:60].to_csv(yl, index=False)
+    with pytest.raises(ValueError, match="plates"):
+        h2_verdict(y, r, yl, rl)
 
 
 def test_h2_refuses_runs_over_different_images(tmp_path):

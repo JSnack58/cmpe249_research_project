@@ -237,3 +237,19 @@ def test_yolo_fingerprints_are_unchanged_by_the_rtdetr_reading():
     cfg = load_config(CONFIG_DIR / "sweeps" / "transfer_final.yaml", variant="ycbcr")
     expected = json.loads((run / "metrics.json").read_text())["attack"]["fingerprint"]
     assert fingerprint(cfg, eval_image_ids(cfg)) == expected
+
+
+def test_rtdetr_attack_is_refused_off_the_gpu(tmp_path, fake_surrogate, monkeypatch):
+    # torch 2.11's CPU backward through eval-mode BatchNorm is wrong for the non-contiguous
+    # gradient RT-DETR's AIFI layer passes it (final review, 2026-11-12): the attack would run,
+    # fail quietly, and make RT-DETR look robust. Refuse before any image is attacked.
+    monkeypatch.setattr(stage, "weights_digests", lambda cfg: {"rtdetr-l_s0": "w"})
+    cfg = tiny_cfg(tmp_path, "models.surrogates=[{name: rtdetr-l, seed: 0}]")
+    with pytest.raises(RuntimeError, match="CUDA"):
+        run_attack(cfg)
+    assert fake_surrogate["pgd"] == 0
+
+
+def test_yolo_attack_still_runs_on_the_cpu(tmp_path, fake_surrogate):
+    run_attack(tiny_cfg(tmp_path))
+    assert fake_surrogate["pgd"] == len(IDS)

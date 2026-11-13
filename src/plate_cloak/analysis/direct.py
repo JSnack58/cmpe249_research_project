@@ -23,8 +23,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from omegaconf import OmegaConf
 
 from plate_cloak.analysis.report import Run, _attack_success, load_run, surrogates_of
+from plate_cloak.attack.stage import attack_settings
 from plate_cloak.evaluation.stats import bootstrap_ci
 
 STRENGTH_BAR = 0.70
@@ -81,6 +83,7 @@ def h1_direct(
         )
     runs_used = [groups[m][s] for m in (cnn, transformer) for s in seeds]
     check_same_images(runs_used)
+    check_same_settings(runs_used)
 
     def mean_drop(model, w):
         return float(np.mean([groups[model][s].drop([(model, s)], "map50", w) for s in seeds]))
@@ -100,6 +103,7 @@ def h1_direct(
         "cnn_drop": ci(lambda w: mean_drop(cnn, w)),
         "transformer_drop": ci(lambda w: mean_drop(transformer, w)),
         "difference": difference,
+        "budget": {k: attack_settings(first.cfg.attack)[k] for k in ("space", "eps")},
         "threshold": threshold,
         "supported": bool(difference["point"] >= threshold and difference["low"] > 0),
         "attack_success": {
@@ -158,6 +162,8 @@ def write_verdict(runs: list[Path], out: Path) -> None:
         f"mAP50 drops are means over seeds {seeds}, each seed's images attacked with that seed's "
         "weights; 95% bootstrap CIs over images, one resampling shared by every run.",
         "",
+        f"Budget, the same for every run: {v['budget']['space']} {v['budget']['eps']}.",
+        "",
         f"- {v['cnn']} (CNN control): {_ci(v['cnn_drop'])}",
         f"- {v['transformer']} (Transformer): {_ci(v['transformer_drop'])}",
         "",
@@ -202,6 +208,26 @@ def check_same_images(runs: list[Run]) -> None:
         if other != ids[0]:
             raise ValueError(
                 f"{run.name} and {runs[0].name} must cover the same images in the same order"
+            )
+
+
+def check_same_settings(runs: list[Run]) -> None:
+    """The comparison is only fair if every run used the same attack (budget, steps, loss), the
+    same data and the same evaluation; only the attacked model may differ."""
+
+    def settings(run):
+        return {
+            "attack": attack_settings(run.cfg.attack),
+            "data": OmegaConf.to_container(run.cfg.data, resolve=True),
+            "eval": OmegaConf.to_container(run.cfg.eval, resolve=True),
+        }
+
+    reference = settings(runs[0])
+    for run in runs[1:]:
+        if settings(run) != reference:
+            raise ValueError(
+                f"{run.name} and {runs[0].name} must use the same attack, data and evaluation "
+                "settings"
             )
 
 

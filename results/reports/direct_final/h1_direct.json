@@ -23,6 +23,14 @@
       "low": 0.06858821330747199,
       "high": 0.10050158094850278
     },
+    "budget": {
+      "space": "ycbcr",
+      "eps": {
+        "y": 3,
+        "cb": 4,
+        "cr": 4
+      }
+    },
     "threshold": 0.35,
     "supported": false,
     "attack_success": {

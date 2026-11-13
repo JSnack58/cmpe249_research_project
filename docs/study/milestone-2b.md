@@ -11,7 +11,7 @@ Milestone 2b took transfer out of the question: each model is attacked with grad
 The question became: with full access to its weights, is a Transformer still much harder to fool than a size-matched CNN?
 The answer is no.
 YOLOv10l's mAP@0.5 drops by 0.466 and RT-DETR-L's by 0.381, a gap of 0.085 [0.069, 0.101] against the pre-registered 0.35, so **H1-direct is not supported**.
-RT-DETR resists a little (the CI excludes zero), not decisively, and 2a's tiny RT-DETR number (0.006) came from transfer, not from attention.
+The gap is at most 0.085, and part of it may come from the attack being somewhat weaker on RT-DETR rather than from the architecture; either way it is far from decisive, and 2a's tiny RT-DETR number (0.006) came from transfer, not from attention.
 H2 was also scored by its written rule on Milestone 1's runs: chroma noise hides plates as well as RGB noise but scores a higher LPIPS, so **H2 is not supported as written**, even though the eye test tells the opposite story about visibility.
 
 ## 1. Why attack directly
@@ -95,11 +95,16 @@ After the fix:
 Three seeds sat just under 0.80.
 You lowered the bar to 0.70 for every seed of both models, and the decision is recorded as made after seeing the data.
 The reasons: 0.80 was a guess from YOLOv8s (0.94 at RGB 12) made before any 2b data; both models land in the same band; the check had already done its job by catching the broken attack; and the bar applies to both models alike and does not touch the H1 threshold.
-A lower bar for the CNN control can only make H1-direct *harder* to support, because H1 needs the CNN to drop a lot.
+The lower bar cuts both ways, and it matters which way.
+It let a weaker CNN attack through (YOLOv10l seed 2), which can only shrink the gap H1 needs.
+It also let a weaker RT-DETR attack through (seeds 0 and 1), which can only *widen* that gap.
+So the bar cannot have turned a supported verdict into "not supported", nor faked one: a stronger RT-DETR attack could only shrink 0.085 further, so "not supported" is safe.
+What it does mean is that the small gap that remains (0.085) may partly be a weaker attack on RT-DETR, not RT-DETR resisting.
+The reviewer also noticed that RT-DETR's loss is dominated by encoder scores (97 of its top 100 on one image), so the attack's balance between RT-DETR's two stages is a plausible reason it is a little weaker.
 
 **Check yourself**
 1. Why was the decoder-only attack so weak, even though the decoder produces the final scores?
-2. Why can lowering the strength bar not bias the verdict toward H1?
+2. Lowering the strength bar let weaker attacks through on both models. Which conclusion does that leave safe, and which does it weaken?
 
 ## 4. Gate 2: is each model's noise invisible?
 
@@ -134,9 +139,10 @@ It is near zero off the diagonal in every direction: RT-DETR's noise moves the Y
 
 How to say it:
 - H1-direct is not supported: with access to its own weights, RT-DETR breaks slightly less than YOLOv10l (0.38 against 0.47), nowhere near the 0.35 gap the rule asked for.
+- The 0.085 gap is an upper bound on any architecture effect, not proof of one: the attack may be somewhat weaker on RT-DETR (see section 3).
 - 2a's 0.006 for RT-DETR was a transfer effect: attacked directly at an invisible budget, RT-DETR loses 0.38.
 - At this budget each attack exploits its own model's weights almost entirely; that, not the CNN-to-Transformer gap, is what limits cross-model cloaking.
-- The same ordering shows at the visible strength-check budget (seed means 0.83 against 0.77), so it is not an artifact of the small budget.
+- The same ordering shows at the visible strength-check budget (seed means 0.83 against 0.77); a slightly weaker RT-DETR attack would produce that ordering too, so it does not settle where the gap comes from.
 
 **Check yourself**
 1. Why does the verdict use one bootstrap shared by all six runs instead of one per run?
@@ -179,7 +185,7 @@ Report both, and say plainly which one the rule named.
 
 **Section 3.**
 1. The encoder decides which 300 candidates the decoder ever sees; lowering decoder scores left the encoder proposing the plate every step, and the decoder found it again.
-2. H1 needs the CNN to drop much more than the Transformer; a bar that lets a weaker CNN attack through can only shrink that gap, never widen it.
+2. "Not supported" stays safe: a weaker CNN attack shrinks the gap, and a stronger RT-DETR attack could only shrink it further, so no fix to the attack could lift 0.085 to 0.35. What it weakens is reading the remaining 0.085 as RT-DETR resisting: a weaker RT-DETR attack (seeds 0 and 1 passed only at the lower bar) widens the gap, so part of it may be the attack, not the architecture.
 
 **Section 4.**
 1. The comparison needs equal budgets: if one model got a larger budget, a bigger drop could come from the budget rather than the architecture.

@@ -128,6 +128,27 @@ def test_h1_direct_bootstrap_is_shared_across_runs(tmp_path):
     assert v["cnn_drop"]["low"] < v["cnn_drop"]["high"]
 
 
+def test_h1_direct_refuses_runs_with_different_attack_settings(tmp_path):
+    from omegaconf import OmegaConf
+
+    runs = direct_runs(tmp_path, 0.9, 0.1)
+    for key, value in (("attack.eps.y", 2), ("attack.steps", 20), ("eval.conf", 0.5)):
+        cfg = OmegaConf.load(runs[-1] / "config.yaml")
+        original = OmegaConf.select(cfg, key)
+        OmegaConf.update(cfg, key, value)
+        OmegaConf.save(cfg, runs[-1] / "config.yaml")
+        with pytest.raises(ValueError, match="same attack, data and evaluation"):
+            h1_direct(runs)
+        OmegaConf.update(cfg, key, original)
+        OmegaConf.save(cfg, runs[-1] / "config.yaml")
+    assert h1_direct(runs)["supported"]  # restored: accepted again
+
+
+def test_h1_direct_report_states_the_shared_budget(tmp_path):
+    v = h1_direct(direct_runs(tmp_path, 0.9, 0.1))
+    assert v["budget"] == {"space": "ycbcr", "eps": {"y": 3, "cb": 4, "cr": 4}}
+
+
 # --- transfer matrix and CLI -----------------------------------------------------------------
 
 

@@ -54,9 +54,11 @@ def h2_verdict(
     n = y.n_images
     recall_diff = ci(n, lambda w: recall(y, w) - recall(r, w))
 
-    both = pd.merge(
-        pd.read_csv(ycbcr_lpips), pd.read_csv(rgb_lpips), on=["image_id", "plate_idx"]
-    ).dropna(subset=["lpips_x", "lpips_y"])
+    y_table = _lpips_for(y, ycbcr_run, ycbcr_lpips)
+    r_table = _lpips_for(r, rgb_run, rgb_lpips)
+    both = pd.merge(y_table, r_table, on=["image_id", "plate_idx"]).dropna(
+        subset=["lpips_x", "lpips_y"]
+    )
     ly, lr = both["lpips_x"].to_numpy(), both["lpips_y"].to_numpy()
 
     def weighted(values):
@@ -82,6 +84,30 @@ def h2_verdict(
         "less_visible": less_visible,
         "supported": recall_equivalent and less_visible,
     }
+
+
+def _lpips_for(run, run_dir: Path, csv: Path) -> pd.DataFrame:
+    """The LPIPS table of a run's own attacked images, covering every plate the run counted.
+
+    The visibility stage's summary.json beside the CSV names the cache it scored, which must be
+    the run's (metrics.json); this refuses swapped files and LPIPS of another attack.
+    """
+    csv = Path(csv)
+    scored = json.loads((csv.parent / "summary.json").read_text())["fingerprint"]
+    attacked = json.loads((Path(run_dir) / "metrics.json").read_text())["attack"]["fingerprint"]
+    if scored != attacked:
+        raise ValueError(f"{csv} was not computed on {run.name}'s images ({scored} != {attacked})")
+    table = pd.read_csv(csv)
+    plates = run.plates
+    counted = plates[(plates["model"] == SURROGATE[0]) & (plates["seed"] == SURROGATE[1])]
+    counted = set(zip(counted["image_id"], counted["plate_idx"], strict=True))
+    listed = set(zip(table["image_id"], table["plate_idx"], strict=True))
+    if listed != counted:
+        raise ValueError(
+            f"{csv} lists {len(listed)} plates, but {run.name} counted {len(counted)}: "
+            "LPIPS must cover the run's own plates"
+        )
+    return table
 
 
 def h2_chart(

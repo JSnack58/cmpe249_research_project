@@ -8,7 +8,7 @@ Or does global self-attention act as an implicit defense against local feature s
 ## Status
 
 Milestone 2a result (2026-11-11): at the largest budget a blind eye test could not see (YCbCr Y 2, Cb/Cr 4), an ensemble attack with input diversity and momentum drops YOLOv10l's mAP@0.5 by only 0.069 [0.060, 0.078] and RT-DETR's by 0.006, short of the 0.35 the CNN control must lose, so H1 remains untested.
-Milestone 2b result (2026-11-12): attacked directly with their own weights at an eye-tested invisible budget (Y 3, Cb/Cr 4), YOLOv10l's mAP@0.5 drops by 0.466 and RT-DETR's by 0.381, a difference of 0.085 [0.069, 0.101] against the pre-registered 0.35, so H1-direct is not supported: RT-DETR resists slightly, not decisively, and 2a's small RT-DETR number came from transfer.
+Milestone 2b result (2026-11-12): attacked directly with their own weights at an eye-tested invisible budget (Y 3, Cb/Cr 4), YOLOv10l's mAP@0.5 drops by 0.466 and RT-DETR's by 0.381, a difference of 0.085 [0.069, 0.101] against the pre-registered 0.35, so H1-direct is not supported: any architecture effect is at most 0.085 (part of it may be a weaker attack on RT-DETR), and 2a's small RT-DETR number came from transfer.
 H2 is not supported by its written rule: chroma noise hides plates as well as RGB noise (recall 0.054 against 0.081) but scores higher LPIPS (0.039 against 0.026), although at equal LPIPS the eye test caught RGB noise and not chroma noise.
 Results, decisions and open questions are tracked in [docs/experiment-decisions.md](docs/experiment-decisions.md); the two feasibility spikes below came first.
 

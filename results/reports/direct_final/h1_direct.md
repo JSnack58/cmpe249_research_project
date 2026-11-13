@@ -2,6 +2,8 @@
 
 mAP50 drops are means over seeds 0, 1, 2, each seed's images attacked with that seed's weights; 95% bootstrap CIs over images, one resampling shared by every run.
 
+Budget, the same for every run: ycbcr {'y': 3, 'cb': 4, 'cr': 4}.
+
 - yolov10l (CNN control): 0.466 [0.446, 0.485]
 - rtdetr-l (Transformer): 0.381 [0.362, 0.399]
 

@@ -98,6 +98,7 @@ def attack_settings(attack: DictConfig) -> dict:
 
 def run_attack(cfg: DictConfig) -> Path:
     """Attack every evaluation image (or reuse a finished cache) and return the cache folder."""
+    _check_device(cfg)
     ids = eval_image_ids(cfg)
     out = resolve_path(cfg.output.cache_root) / fingerprint(cfg, ids)
     digests = weights_digests(cfg)
@@ -143,6 +144,24 @@ def run_attack(cfg: DictConfig) -> Path:
     (out / "done.json").write_text(json.dumps({"n_images": len(ids), "max_change": worst}) + "\n")
     print(f"attack: done -> {out}  (max change {worst})")
     return out
+
+
+def _check_device(cfg: DictConfig) -> None:
+    """Refuse an RT-DETR surrogate off the GPU.
+
+    In torch 2.11 the CPU backward pass through an eval-mode BatchNorm is wrong when its incoming
+    gradient is not contiguous, which is what RT-DETR's AIFI layer passes it (found in milestone
+    2b's final review; YOLO surrogates are unaffected). The attack would run, fail quietly, and
+    RT-DETR would look robust, so it is refused instead.
+    """
+    from plate_cloak.models.zoo import spec
+
+    rtdetr = [m.name for m in cfg.models.surrogates if spec(m.name).family == "rtdetr"]
+    if rtdetr and torch.device(cfg.device).type != "cuda":
+        raise RuntimeError(
+            f"{rtdetr} must be attacked on CUDA, not {cfg.device!r}: its CPU gradient is wrong "
+            "in this torch build (see attack/stage.py _check_device)"
+        )
 
 
 def load_surrogates(cfg: DictConfig) -> list[torch.nn.Module]:

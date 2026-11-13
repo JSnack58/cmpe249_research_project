@@ -279,7 +279,9 @@ Each entry notes where it came from.
   The owner lowered the bar to 0.70 for every seed of both models, which all six pass, because:
   - 0.80 was an estimate made before any 2b data, from YOLOv8s's 0.94 at RGB 12; these larger models resist somewhat more, and both land in the same 0.74-0.89 band;
   - the check exists to tell a broken attack (0.32-0.40) from a working one, and it did;
-  - the bar applies to both models alike and does not touch the H1-direct rule, and a lower bar for the CNN control can only make H1-direct harder to support.
+  - the bar applies to both models alike and does not touch the H1-direct rule.
+  The lower bar cuts both ways (final review): a weaker CNN attack (YOLOv10l s2) shrinks the H1 gap, but a weaker RT-DETR attack (s0, s1) widens it.
+  So it cannot have produced a "not supported" verdict that a stronger attack would reverse, but the remaining gap may partly reflect a weaker RT-DETR attack.
   Stated in the write-up as a change made after seeing the data.
   YOLOv10l seed 2 runs the same code path as seeds 0 and 1 and simply resists more.
 - **YOLOv10l is not NMS-free in this pipeline (2026-11-12, milestone 2b Task 2).**
@@ -312,15 +314,22 @@ Each entry notes where it came from.
   - RT-DETR-L (Transformer): 0.381 [0.362, 0.399] (seeds 0.424, 0.329, 0.391);
   - difference: **0.085 [0.069, 0.101]**, against the pre-registered 0.35 with the CI above 0.
   So H1-direct is not supported: with access to its own weights, RT-DETR breaks somewhat less than the size-matched CNN (the CI excludes 0), but nowhere near the 0.35 the rule asked for.
+  The verdict is safe (a stronger RT-DETR attack could only shrink the gap), but 0.085 is an upper bound on any architecture effect, not proof of one: the attack may be somewhat weaker on RT-DETR (its loss is dominated by encoder scores, 97 of the top 100 on one image checked in the final review).
   Readings for the write-up:
   - 2a's tiny RT-DETR drop (0.006) came mostly from transfer, not from attention: attacked directly at an invisible budget, RT-DETR loses 0.38 mAP50.
   - Transfer between the direct attacks is near zero in every direction (by-product matrix in the report): RT-DETR's noise moves YOLOv10l and YOLOv8s by 0.004-0.010, YOLOv10l's moves RT-DETR by 0.001-0.004, and even other seeds of the same model move only 0.03-0.05. At this budget each attack mostly exploits its own model's weights.
   - Attack success on the 1,669 plates every model finds when clean: YOLOv10l 0.500, 0.481, 0.445; RT-DETR 0.499, 0.325, 0.385.
-  - The strength check (RGB 16) shows the same ordering at a visible budget: YOLOv10l 0.83, RT-DETR 0.77 (seed means).
+  - The strength check (RGB 16) shows the same ordering at a visible budget: YOLOv10l 0.83, RT-DETR 0.77 (seed means); a slightly weaker RT-DETR attack would produce that ordering too, so it does not show where the gap comes from.
 
 - **Run provenance named GPU 0 for every run until 2026-11-12.**
   `provenance()` recorded `torch.cuda.get_device_name(0)` whatever device the run used, so runs on `cuda:1` (the RTX 3080 Ti) say "RTX 3090" in their `metrics.json` and cache `settings.yaml`.
   No number depends on it; it now names the run's own device.
+
+- **RT-DETR must be attacked on the GPU (2026-11-12, milestone 2b final review).**
+  In torch 2.11.0, the CPU backward pass through an eval-mode BatchNorm returns a wrong gradient when the incoming gradient is not contiguous, which is what RT-DETR's AIFI layer passes to the next BatchNorm.
+  On CPU the real RT-DETR's input gradient points the wrong way (cosine -0.23 against the GPU's), and an attacked plate kept a score of 0.86 where the GPU attack brought it to 0.01; YOLO models are unaffected (cosine 1.0).
+  Every committed RT-DETR run used CUDA, and the reviewer confirmed the GPU gradient against finite differences, so no number changes.
+  The attack stage now refuses an RT-DETR surrogate on a non-CUDA device.
 
 ## Open
 

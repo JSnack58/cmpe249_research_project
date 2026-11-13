@@ -123,6 +123,7 @@ def pgd(
     means YOLOv8's Detect head for every surrogate, the only case before milestone 2b.
     The start is zero noise. On CPU the result is deterministic; on GPU cuDNN's backward pass is
     not, and a tiny gradient difference can flip a pixel's step (see experiment-decisions.md).
+    RT-DETR must run on the GPU: its CPU gradient is wrong in torch 2.11 (stage._check_device).
     """
     if s.method != "pgd":
         raise ValueError(f"pgd() got method={s.method!r}; use random_sign_noise for the control")
