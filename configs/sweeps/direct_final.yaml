@@ -1,0 +1,27 @@
+# Final direct-attack run on the test set, once (milestone 2b, spec 2026-11-12, sections 3 and 5).
+# Each seed of RT-DETR-L and YOLOv10l attacked with its own weights at the budget both models'
+# noise passed the eye test at (direct1: Y 3, Cb/Cr 4; RT-DETR 17/40, YOLOv10l 25/40), and every
+# attacked set shown to base.yaml's nine targets (white-box rows give the verdict; the rest are the
+# cross-architecture transfer by-product). H1-direct is read from the six white-box rows.
+#
+#   python -m plate_cloak run --config configs/sweeps/direct_final.yaml --variant V --name N
+
+id: direct_final
+
+overrides:
+  data.split: test
+  attack.method: pgd
+  attack.space: ycbcr
+  attack.eps.y: 3
+  attack.eps.cb: 4
+  attack.eps.cr: 4
+  attack.momentum: 0.0
+  attack.diversity.p: 0.0
+
+variants:
+  rtdetr_s0: {models.surrogates: [{name: rtdetr-l, seed: 0}]}
+  rtdetr_s1: {models.surrogates: [{name: rtdetr-l, seed: 1}]}
+  rtdetr_s2: {models.surrogates: [{name: rtdetr-l, seed: 2}]}
+  v10l_s0: {models.surrogates: [{name: yolov10l, seed: 0}]}
+  v10l_s1: {models.surrogates: [{name: yolov10l, seed: 1}]}
+  v10l_s2: {models.surrogates: [{name: yolov10l, seed: 2}]}

@@ -1,0 +1,26 @@
+{
+  "budgets": {
+    "direct_eye/rtdetr_s0": {
+      "correct": 17,
+      "n": 40,
+      "complete": true,
+      "passed": true
+    },
+    "direct_eye/v10l_s0": {
+      "correct": 25,
+      "n": 40,
+      "complete": true,
+      "passed": true
+    }
+  },
+  "ladders": {
+    "direct_eye": {
+      "rungs": [
+        "rtdetr_s0",
+        "v10l_s0"
+      ],
+      "ceiling": "v10l_s0",
+      "extend": "up"
+    }
+  }
+}

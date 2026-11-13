@@ -308,3 +308,37 @@ def test_direct_eye_is_the_frozen_plain_pgd_ceiling_on_validation():
         assert (a.method, a.space, a.eps.y, a.eps.cb, a.eps.cr) == ("pgd", "ycbcr", 3, 4, 4), v
         assert (a.steps, a.momentum, a.diversity.p, a.loss.type) == (40, 0.0, 0.0, "topk"), v
         assert (cfg.data.split, cfg.data.n_eval) == ("val", None), v
+
+
+DIRECT_FINAL = CONFIG_DIR / "sweeps" / "direct_final.yaml"
+
+
+def test_direct_final_matches_the_eye_tested_budget_and_every_target():
+    names = [f"{m}_s{s}" for m in DIRECT_MODELS for s in (0, 1, 2)]
+    assert variants(DIRECT_FINAL) == names
+    raw = yaml.safe_load(DIRECT_FINAL.read_text())
+    budget = {"attack.space", "attack.eps.y", "attack.eps.cb", "attack.eps.cr"}
+    assert budget <= raw["overrides"].keys()  # written in the file, not inherited
+    base = load_config(BASE_CONFIG)
+    eye = load_config(DIRECT_EYE, variant="rtdetr_s0").attack
+    for v in names:
+        cfg = load_config(DIRECT_FINAL, variant=v)
+        short, seed = v.rsplit("_s", 1)
+        own = [{"name": DIRECT_MODELS[short], "seed": int(seed)}]
+        assert [dict(m) for m in cfg.models.surrogates] == own, v  # its own weights
+        assert [dict(t) for t in cfg.models.targets] == [dict(t) for t in base.models.targets], v
+        a = cfg.attack
+        assert (a.space, a.eps.y, a.eps.cb, a.eps.cr) == (
+            eye.space,
+            eye.eps.y,
+            eye.eps.cb,
+            eye.eps.cr,
+        )
+        assert (a.method, a.steps, a.momentum, a.diversity.p, a.loss.type) == (
+            eye.method,
+            eye.steps,
+            eye.momentum,
+            eye.diversity.p,
+            eye.loss.type,
+        ), v
+        assert (cfg.data.split, cfg.data.n_eval) == ("test", None), v

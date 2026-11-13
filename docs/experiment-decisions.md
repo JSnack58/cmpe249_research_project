@@ -287,6 +287,11 @@ Each entry notes where it came from.
   Earlier documents (including the 2b spec) call the CNN control "NMS-free"; that is wrong for every milestone here, though no number changes (the same evaluation ran throughout).
   The write-up must not describe YOLOv10l as NMS-free.
 
+- **Milestone 2b eye test: both models' direct noise passes at Y 3, Cb/Cr 4 (2026-11-12, session `direct1`).**
+  Seed 0 of each model attacked with its own weights on validation, 40 trials each, sides balanced (20 left, 20 right per model), one viewer (the owner): RT-DETR-L 17 of 40, YOLOv10l 25 of 40 (exactly at the pass line).
+  So the final run uses the frozen plain-PGD ceiling, Y 3, Cb/Cr 4, for both models; no step-down.
+  The scorer's "ceiling v10l_s0, extend up" line treats the two variants as a ladder, which they are not; ignore it for this session.
+
 ## Open
 
 - **Dataset: Open Images V7 plates or keremberke.**
